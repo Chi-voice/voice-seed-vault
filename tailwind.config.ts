@@ -61,6 +61,17 @@ export default {
 					'accent-foreground': 'hsl(var(--sidebar-accent-foreground))',
 					border: 'hsl(var(--sidebar-border))',
 					ring: 'hsl(var(--sidebar-ring))'
+				},
+				earth: {
+					primary: 'hsl(var(--earth-primary))',
+					secondary: 'hsl(var(--earth-secondary))',
+					accent: 'hsl(var(--earth-accent))',
+					warm: 'hsl(var(--earth-warm))',
+					deep: 'hsl(var(--earth-deep))'
+				},
+				recording: {
+					active: 'hsl(var(--recording-active))',
+					ready: 'hsl(var(--recording-ready))'
 				}
 			},
 			borderRadius: {
