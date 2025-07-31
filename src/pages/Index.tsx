@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { TaskCard, Task } from '@/components/TaskCard';
 import { RecordingModal } from '@/components/RecordingModal';
 import { StatsCard } from '@/components/StatsCard';
@@ -16,67 +18,205 @@ import {
   Heart,
   BookOpen,
   Volume2,
-  Clock
+  Clock,
+  LogOut,
+  Sparkles
 } from 'lucide-react';
 import heroImage from '@/assets/hero-image.jpg';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
+import type { Session, User } from '@supabase/supabase-js';
 
-// Sample tasks data - in a real app, this would come from a backend
-const sampleTasks: Task[] = [
-  {
-    id: '1',
-    type: 'word',
-    englishText: 'Hello',
-    description: 'A common greeting used when meeting someone',
-    difficulty: 'beginner',
-    estimatedTime: 2,
-    isCompleted: false
-  },
-  {
-    id: '2', 
-    type: 'phrase',
-    englishText: 'How are you?',
-    description: 'A polite question asking about someone\'s wellbeing',
-    difficulty: 'beginner',
-    estimatedTime: 3,
-    isCompleted: true
-  },
-  {
-    id: '3',
-    type: 'sentence',
-    englishText: 'The sun rises in the east and sets in the west.',
-    description: 'A statement about natural phenomena',
-    difficulty: 'intermediate',
-    estimatedTime: 5,
-    isCompleted: false
-  },
-  {
-    id: '4',
-    type: 'word',
-    englishText: 'Family',
-    description: 'People who are related to you',
-    difficulty: 'beginner',
-    estimatedTime: 2,
-    isCompleted: false
-  },
-  {
-    id: '5',
-    type: 'phrase',
-    englishText: 'Thank you very much',
-    description: 'An expression of deep gratitude',
-    difficulty: 'intermediate',
-    estimatedTime: 3,
-    isCompleted: false
-  }
-];
+interface Language {
+  id: string;
+  name: string;
+  code: string;
+  is_popular: boolean;
+}
 
 const Index = () => {
-  const [tasks, setTasks] = useState<Task[]>(sampleTasks);
+  const [user, setUser] = useState<User | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
+  const [languages, setLanguages] = useState<Language[]>([]);
+  const [selectedLanguage, setSelectedLanguage] = useState<string>('');
+  const [tasks, setTasks] = useState<Task[]>([]);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [isRecordingModalOpen, setIsRecordingModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [activeTab, setActiveTab] = useState('all');
+  const [loading, setLoading] = useState(true);
+  const [generatingTask, setGeneratingTask] = useState(false);
+  const [userProgress, setUserProgress] = useState<any>(null);
+  const navigate = useNavigate();
   const { toast } = useToast();
+
+  // Set up auth state listener
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        setSession(session);
+        setUser(session?.user ?? null);
+        
+        if (!session) {
+          navigate('/auth');
+        }
+      }
+    );
+
+    // Check for existing session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      setUser(session?.user ?? null);
+      
+      if (!session) {
+        navigate('/auth');
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, [navigate]);
+
+  // Load languages and tasks
+  useEffect(() => {
+    if (user) {
+      loadLanguages();
+    }
+  }, [user]);
+
+  useEffect(() => {
+    if (selectedLanguage && user) {
+      loadTasks();
+      loadUserProgress();
+    }
+  }, [selectedLanguage, user]);
+
+  const loadLanguages = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('languages')
+        .select('*')
+        .order('is_popular', { ascending: false })
+        .order('name');
+      
+      if (error) throw error;
+      
+      setLanguages(data || []);
+      
+      // Auto-select first popular language
+      const firstPopular = data?.find(lang => lang.is_popular);
+      if (firstPopular) {
+        setSelectedLanguage(firstPopular.id);
+      }
+    } catch (error: any) {
+      toast({
+        title: "Error loading languages",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadTasks = async () => {
+    if (!selectedLanguage) return;
+    
+    try {
+      const { data, error } = await supabase
+        .from('tasks')
+        .select(`
+          *,
+          recordings!left(id, user_id)
+        `)
+        .eq('language_id', selectedLanguage)
+        .order('created_at', { ascending: false });
+      
+      if (error) throw error;
+      
+      // Map tasks to include completion status
+      const tasksWithCompletion = (data || []).map(task => ({
+        id: task.id,
+        type: task.type as 'word' | 'phrase' | 'sentence',
+        englishText: task.english_text,
+        description: task.description,
+        difficulty: task.difficulty as 'beginner' | 'intermediate' | 'advanced',
+        estimatedTime: task.estimated_time,
+        isCompleted: task.recordings?.some((r: any) => r.user_id === user?.id) || false
+      }));
+      
+      setTasks(tasksWithCompletion);
+    } catch (error: any) {
+      toast({
+        title: "Error loading tasks",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const loadUserProgress = async () => {
+    if (!selectedLanguage || !user) return;
+    
+    try {
+      const { data, error } = await supabase
+        .from('user_task_progress')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('language_id', selectedLanguage)
+        .single();
+      
+      if (error && error.code !== 'PGRST116') throw error;
+      
+      setUserProgress(data);
+    } catch (error: any) {
+      console.error('Error loading user progress:', error);
+    }
+  };
+
+  const generateNewTask = async () => {
+    if (!selectedLanguage || !user) return;
+    
+    setGeneratingTask(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('generate-task', {
+        body: {
+          language_id: selectedLanguage,
+          user_id: user.id
+        }
+      });
+      
+      if (error) throw error;
+      
+      if (data.error) {
+        toast({
+          title: "Task Generation",
+          description: data.error,
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      toast({
+        title: "New task generated!",
+        description: "A new AI-generated task is ready for recording.",
+      });
+      
+      loadTasks();
+      loadUserProgress();
+    } catch (error: any) {
+      toast({
+        title: "Error generating task",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setGeneratingTask(false);
+    }
+  };
+
+  const handleSignOut = async () => {
+    await supabase.auth.signOut();
+  };
 
   // Filter tasks based on search and tab
   const filteredTasks = tasks.filter(task => {
@@ -99,22 +239,61 @@ const Index = () => {
     totalContributionTime: tasks.filter(t => t.isCompleted).reduce((acc, t) => acc + t.estimatedTime, 0)
   };
 
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-earth-warm via-background to-earth-warm/50 flex items-center justify-center">
+        <div className="text-center">
+          <Mic className="w-12 h-12 text-earth-primary mx-auto mb-4 animate-pulse" />
+          <p className="text-lg text-muted-foreground">Loading Chi Voice...</p>
+        </div>
+      </div>
+    );
+  }
+
   const handleStartTask = (task: Task) => {
     setSelectedTask(task);
     setIsRecordingModalOpen(true);
   };
 
   const handleSubmitRecording = async (taskId: string, audioBlob: Blob, notes?: string) => {
-    // In a real app, this would upload to a backend/database
-    console.log('Submitting recording for task:', taskId, audioBlob, notes);
+    if (!user) return;
     
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    // Mark task as completed
-    setTasks(prev => prev.map(task => 
-      task.id === taskId ? { ...task, isCompleted: true } : task
-    ));
+    try {
+      // Upload audio file to Supabase storage (you'll need to set up storage bucket)
+      const fileName = `${user.id}/${taskId}_${Date.now()}.webm`;
+      
+      // For now, we'll create a placeholder URL since storage isn't configured
+      const audioUrl = `placeholder_${fileName}`;
+      
+      // Save recording to database
+      const { error } = await supabase
+        .from('recordings')
+        .insert({
+          user_id: user.id,
+          task_id: taskId,
+          audio_url: audioUrl,
+          notes: notes,
+          duration: 0 // You can calculate this from the blob
+        });
+      
+      if (error) throw error;
+      
+      toast({
+        title: "Recording saved!",
+        description: "Your translation has been saved successfully.",
+      });
+      
+      // Reload tasks and progress
+      loadTasks();
+      loadUserProgress();
+      
+    } catch (error: any) {
+      toast({
+        title: "Error saving recording",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
     
     setIsRecordingModalOpen(false);
     setSelectedTask(null);
@@ -131,9 +310,20 @@ const Index = () => {
           <div className="absolute inset-0 bg-earth-deep/60" />
           <div className="relative container mx-auto px-4 h-full flex items-center">
             <div className="max-w-2xl text-white">
-              <h1 className="text-4xl md:text-6xl font-bold mb-4 leading-tight">
-                Chi Language Vault
-              </h1>
+              <div className="flex items-center justify-between mb-4">
+                <h1 className="text-4xl md:text-6xl font-bold leading-tight">
+                  Chi Voice
+                </h1>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={handleSignOut}
+                  className="border-white text-white hover:bg-white hover:text-earth-deep"
+                >
+                  <LogOut className="w-4 h-4 mr-2" />
+                  Sign Out
+                </Button>
+              </div>
               <p className="text-xl md:text-2xl mb-6 opacity-90">
                 Preserving Indigenous Languages Through Your Voice
               </p>
@@ -223,6 +413,67 @@ const Index = () => {
               Choose from words, phrases, or sentences to record in your indigenous language. 
               Each contribution helps build our comprehensive language dataset.
             </p>
+          </div>
+
+          {/* Language Selection and Controls */}
+          <div className="flex flex-col md:flex-row gap-4 items-center justify-between mb-6">
+            <div className="flex flex-col md:flex-row gap-4 items-center">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Choose Language:</label>
+                <Select value={selectedLanguage} onValueChange={setSelectedLanguage}>
+                  <SelectTrigger className="w-64">
+                    <SelectValue placeholder="Select a language" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {languages
+                      .filter(lang => lang.is_popular)
+                      .map(language => (
+                        <SelectItem key={language.id} value={language.id}>
+                          {language.name}
+                        </SelectItem>
+                      ))}
+                    {languages.filter(lang => !lang.is_popular).length > 0 && (
+                      <>
+                        <div className="px-2 py-1 text-xs text-muted-foreground border-t">
+                          Other Languages
+                        </div>
+                        {languages
+                          .filter(lang => !lang.is_popular)
+                          .map(language => (
+                            <SelectItem key={language.id} value={language.id}>
+                              {language.name}
+                            </SelectItem>
+                          ))}
+                      </>
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              {selectedLanguage && (
+                <Button 
+                  onClick={generateNewTask}
+                  disabled={generatingTask || !userProgress?.can_generate_next}
+                  className="bg-earth-primary hover:bg-earth-primary/90"
+                >
+                  <Sparkles className="w-4 h-4 mr-2" />
+                  {generatingTask ? 'Generating...' : 'Generate New Task'}
+                </Button>
+              )}
+            </div>
+            
+            {userProgress && (
+              <div className="text-center">
+                <Badge variant="outline" className="text-earth-primary">
+                  {userProgress.recordings_count}/2 recordings completed
+                </Badge>
+                {!userProgress.can_generate_next && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Complete 2 recordings to unlock new tasks
+                  </p>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Search and Filters */}
