@@ -14,7 +14,189 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      languages: {
+        Row: {
+          code: string
+          created_at: string
+          id: string
+          is_popular: boolean | null
+          name: string
+          total_recordings: number | null
+          total_tasks: number | null
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          id?: string
+          is_popular?: boolean | null
+          name: string
+          total_recordings?: number | null
+          total_tasks?: number | null
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          id?: string
+          is_popular?: boolean | null
+          name?: string
+          total_recordings?: number | null
+          total_tasks?: number | null
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string
+          display_name: string | null
+          id: string
+          preferred_language_id: string | null
+          total_recordings: number | null
+          updated_at: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string
+          display_name?: string | null
+          id: string
+          preferred_language_id?: string | null
+          total_recordings?: number | null
+          updated_at?: string
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          preferred_language_id?: string | null
+          total_recordings?: number | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      recordings: {
+        Row: {
+          audio_url: string
+          created_at: string
+          duration: number | null
+          id: string
+          notes: string | null
+          task_id: string
+          user_id: string
+        }
+        Insert: {
+          audio_url: string
+          created_at?: string
+          duration?: number | null
+          id?: string
+          notes?: string | null
+          task_id: string
+          user_id: string
+        }
+        Update: {
+          audio_url?: string
+          created_at?: string
+          duration?: number | null
+          id?: string
+          notes?: string | null
+          task_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recordings_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tasks: {
+        Row: {
+          created_at: string
+          created_by_ai: boolean | null
+          description: string | null
+          difficulty: string
+          english_text: string
+          estimated_time: number | null
+          id: string
+          language_id: string
+          type: string
+        }
+        Insert: {
+          created_at?: string
+          created_by_ai?: boolean | null
+          description?: string | null
+          difficulty: string
+          english_text: string
+          estimated_time?: number | null
+          id?: string
+          language_id: string
+          type: string
+        }
+        Update: {
+          created_at?: string
+          created_by_ai?: boolean | null
+          description?: string | null
+          difficulty?: string
+          english_text?: string
+          estimated_time?: number | null
+          id?: string
+          language_id?: string
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tasks_language_id_fkey"
+            columns: ["language_id"]
+            isOneToOne: false
+            referencedRelation: "languages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_task_progress: {
+        Row: {
+          can_generate_next: boolean | null
+          created_at: string
+          id: string
+          language_id: string
+          last_recording_at: string | null
+          recordings_count: number | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          can_generate_next?: boolean | null
+          created_at?: string
+          id?: string
+          language_id: string
+          last_recording_at?: string | null
+          recordings_count?: number | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          can_generate_next?: boolean | null
+          created_at?: string
+          id?: string
+          language_id?: string
+          last_recording_at?: string | null
+          recordings_count?: number | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_task_progress_language_id_fkey"
+            columns: ["language_id"]
+            isOneToOne: false
+            referencedRelation: "languages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
