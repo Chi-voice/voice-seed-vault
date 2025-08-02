@@ -8,54 +8,54 @@ All colors MUST be HSL.
 
 @layer base {
   :root {
-    /* Cultural earth tones with futuristic accents */
-    --background: 28 25% 96%;
-    --foreground: 20 15% 12%;
+    /* Traditional Kazakhstan color palette */
+    --background: 45 35% 96%;
+    --foreground: 210 25% 15%;
 
-    --card: 30 30% 98%;
-    --card-foreground: 20 15% 12%;
+    --card: 45 45% 98%;
+    --card-foreground: 210 25% 15%;
 
-    --popover: 30 30% 98%;
-    --popover-foreground: 20 15% 12%;
+    --popover: 45 45% 98%;
+    --popover-foreground: 210 25% 15%;
 
-    --primary: 14 85% 52%;
-    --primary-foreground: 30 5% 98%;
+    --primary: 200 85% 55%;
+    --primary-foreground: 45 15% 98%;
 
-    --secondary: 25 25% 88%;
-    --secondary-foreground: 20 15% 20%;
+    --secondary: 42 75% 78%;
+    --secondary-foreground: 210 25% 20%;
 
-    --muted: 28 20% 92%;
-    --muted-foreground: 25 12% 45%;
+    --muted: 45 25% 92%;
+    --muted-foreground: 210 15% 45%;
 
-    --accent: 35 75% 68%;
-    --accent-foreground: 20 15% 12%;
+    --accent: 42 95% 62%;
+    --accent-foreground: 210 25% 15%;
 
-    --destructive: 0 75% 58%;
-    --destructive-foreground: 30 5% 98%;
+    --destructive: 358 75% 58%;
+    --destructive-foreground: 45 15% 98%;
 
-    --border: 28 20% 85%;
-    --input: 28 20% 85%;
-    --ring: 14 85% 52%;
+    --border: 45 25% 85%;
+    --input: 45 25% 85%;
+    --ring: 200 85% 55%;
 
-    /* Cultural earth palette */
-    --terra-cotta: 14 85% 52%;
-    --desert-sand: 35 75% 68%;
-    --clay-brown: 25 45% 35%;
-    --warm-stone: 30 35% 75%;
-    --deep-earth: 18 25% 18%;
+    /* Traditional Kazakhstan palette */
+    --kazakh-sky: 200 85% 55%;        /* Eternal sky blue */
+    --kazakh-gold: 42 95% 62%;        /* Golden sun */
+    --kazakh-earth: 35 45% 48%;       /* Steppe earth */
+    --kazakh-sand: 45 65% 75%;        /* Desert sand */
+    --kazakh-burgundy: 358 65% 42%;   /* Traditional red */
     
-    /* Futuristic accents */
-    --neon-copper: 20 100% 65%;
-    --cyber-gold: 45 95% 58%;
-    --plasma-orange: 25 95% 60%;
-    --electric-amber: 40 100% 50%;
+    /* Futuristic accents with Kazakhstan touch */
+    --cyber-azure: 195 100% 65%;
+    --golden-glow: 45 100% 58%;
+    --steppe-copper: 30 85% 55%;
+    --nomad-silver: 210 15% 75%;
     
-    /* Advanced gradients */
-    --gradient-cultural: linear-gradient(135deg, hsl(var(--terra-cotta)), hsl(var(--desert-sand)));
-    --gradient-futuristic: linear-gradient(145deg, hsl(var(--neon-copper)), hsl(var(--cyber-gold)));
-    --gradient-hero: linear-gradient(120deg, hsl(var(--terra-cotta)) 0%, hsl(var(--neon-copper)) 50%, hsl(var(--cyber-gold)) 100%);
-    --gradient-card: linear-gradient(145deg, hsl(var(--warm-stone)), hsl(var(--background)));
-    --gradient-glass: linear-gradient(145deg, hsl(var(--warm-stone) / 0.1), hsl(var(--desert-sand) / 0.05));
+    /* Cultural gradients */
+    --gradient-kazakh: linear-gradient(135deg, hsl(var(--kazakh-sky)), hsl(var(--kazakh-gold)));
+    --gradient-steppe: linear-gradient(145deg, hsl(var(--kazakh-earth)), hsl(var(--kazakh-sand)));
+    --gradient-hero: linear-gradient(120deg, hsl(var(--kazakh-sky)) 0%, hsl(var(--cyber-azure)) 50%, hsl(var(--kazakh-gold)) 100%);
+    --gradient-traditional: linear-gradient(145deg, hsl(var(--kazakh-sand)), hsl(var(--background)));
+    --gradient-nomad: linear-gradient(145deg, hsl(var(--kazakh-earth) / 0.1), hsl(var(--kazakh-sand) / 0.05));
     
     /* Audio recording */
     --recording-active: 0 85% 65%;

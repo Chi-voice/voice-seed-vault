@@ -62,18 +62,18 @@ export default {
 					border: 'hsl(var(--sidebar-border))',
 					ring: 'hsl(var(--sidebar-ring))'
 				},
-				cultural: {
-					'terra-cotta': 'hsl(var(--terra-cotta))',
-					'desert-sand': 'hsl(var(--desert-sand))',
-					'clay-brown': 'hsl(var(--clay-brown))',
-					'warm-stone': 'hsl(var(--warm-stone))',
-					'deep-earth': 'hsl(var(--deep-earth))'
+				kazakh: {
+					sky: 'hsl(var(--kazakh-sky))',
+					gold: 'hsl(var(--kazakh-gold))',
+					earth: 'hsl(var(--kazakh-earth))',
+					sand: 'hsl(var(--kazakh-sand))',
+					burgundy: 'hsl(var(--kazakh-burgundy))'
 				},
 				futuristic: {
-					'neon-copper': 'hsl(var(--neon-copper))',
-					'cyber-gold': 'hsl(var(--cyber-gold))',
-					'plasma-orange': 'hsl(var(--plasma-orange))',
-					'electric-amber': 'hsl(var(--electric-amber))'
+					'cyber-azure': 'hsl(var(--cyber-azure))',
+					'golden-glow': 'hsl(var(--golden-glow))',
+					'steppe-copper': 'hsl(var(--steppe-copper))',
+					'nomad-silver': 'hsl(var(--nomad-silver))'
 				},
 				recording: {
 					active: 'hsl(var(--recording-active))',
