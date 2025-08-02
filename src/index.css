@@ -8,56 +8,69 @@ All colors MUST be HSL.
 
 @layer base {
   :root {
-    --background: 25 15% 97%;
-    --foreground: 25 15% 15%;
+    /* Cultural earth tones with futuristic accents */
+    --background: 28 25% 96%;
+    --foreground: 20 15% 12%;
 
-    --card: 25 25% 98%;
-    --card-foreground: 25 15% 15%;
+    --card: 30 30% 98%;
+    --card-foreground: 20 15% 12%;
 
-    --popover: 25 25% 98%;
-    --popover-foreground: 25 15% 15%;
+    --popover: 30 30% 98%;
+    --popover-foreground: 20 15% 12%;
 
-    --primary: 22 65% 45%;
-    --primary-foreground: 25 5% 98%;
+    --primary: 14 85% 52%;
+    --primary-foreground: 30 5% 98%;
 
-    --secondary: 25 20% 92%;
-    --secondary-foreground: 25 15% 25%;
+    --secondary: 25 25% 88%;
+    --secondary-foreground: 20 15% 20%;
 
-    --muted: 25 15% 94%;
-    --muted-foreground: 25 8% 55%;
+    --muted: 28 20% 92%;
+    --muted-foreground: 25 12% 45%;
 
-    --accent: 45 80% 75%;
-    --accent-foreground: 25 15% 15%;
+    --accent: 35 75% 68%;
+    --accent-foreground: 20 15% 12%;
 
-    --destructive: 0 65% 55%;
-    --destructive-foreground: 25 5% 98%;
+    --destructive: 0 75% 58%;
+    --destructive-foreground: 30 5% 98%;
 
-    --border: 25 15% 88%;
-    --input: 25 15% 88%;
-    --ring: 22 65% 45%;
+    --border: 28 20% 85%;
+    --input: 28 20% 85%;
+    --ring: 14 85% 52%;
 
-    /* Custom design tokens for the app */
-    --earth-primary: 22 65% 45%;
-    --earth-secondary: 35 45% 65%;
-    --earth-accent: 45 80% 75%;
-    --earth-warm: 15 25% 85%;
-    --earth-deep: 15 35% 25%;
+    /* Cultural earth palette */
+    --terra-cotta: 14 85% 52%;
+    --desert-sand: 35 75% 68%;
+    --clay-brown: 25 45% 35%;
+    --warm-stone: 30 35% 75%;
+    --deep-earth: 18 25% 18%;
     
-    /* Gradients */
-    --gradient-earth: linear-gradient(135deg, hsl(var(--earth-primary)), hsl(var(--earth-secondary)));
-    --gradient-warm: linear-gradient(180deg, hsl(var(--earth-warm)), hsl(var(--background)));
+    /* Futuristic accents */
+    --neon-copper: 20 100% 65%;
+    --cyber-gold: 45 95% 58%;
+    --plasma-orange: 25 95% 60%;
+    --electric-amber: 40 100% 50%;
     
-    /* Audio recording specific */
-    --recording-active: 0 75% 60%;
-    --recording-ready: 120 45% 55%;
-    --waveform-primary: hsl(var(--earth-primary));
+    /* Advanced gradients */
+    --gradient-cultural: linear-gradient(135deg, hsl(var(--terra-cotta)), hsl(var(--desert-sand)));
+    --gradient-futuristic: linear-gradient(145deg, hsl(var(--neon-copper)), hsl(var(--cyber-gold)));
+    --gradient-hero: linear-gradient(120deg, hsl(var(--terra-cotta)) 0%, hsl(var(--neon-copper)) 50%, hsl(var(--cyber-gold)) 100%);
+    --gradient-card: linear-gradient(145deg, hsl(var(--warm-stone)), hsl(var(--background)));
+    --gradient-glass: linear-gradient(145deg, hsl(var(--warm-stone) / 0.1), hsl(var(--desert-sand) / 0.05));
     
-    /* Shadows and animations */
-    --shadow-earth: 0 4px 20px hsl(var(--earth-primary) / 0.15);
-    --shadow-warm: 0 2px 12px hsl(var(--earth-secondary) / 0.2);
-    --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    /* Audio recording */
+    --recording-active: 0 85% 65%;
+    --recording-ready: 120 55% 55%;
+    --waveform-primary: hsl(var(--terra-cotta));
+    
+    /* Advanced shadows and effects */
+    --shadow-cultural: 0 8px 32px hsl(var(--terra-cotta) / 0.15);
+    --shadow-futuristic: 0 0 40px hsl(var(--neon-copper) / 0.2);
+    --shadow-glass: 0 8px 32px hsl(var(--warm-stone) / 0.12);
+    --glow-accent: 0 0 20px hsl(var(--cyber-gold) / 0.4);
+    --transition-smooth: all 0.4s cubic-bezier(0.23, 1, 0.32, 1);
+    --transition-bounce: all 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55);
 
-    --radius: 0.5rem;
+    --radius: 0.75rem;
 
     --sidebar-background: 0 0% 98%;
 
