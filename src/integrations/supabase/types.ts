@@ -50,6 +50,7 @@ export type Database = {
           created_at: string
           display_name: string | null
           id: string
+          points: number | null
           preferred_language_id: string | null
           total_recordings: number | null
           updated_at: string
@@ -59,6 +60,7 @@ export type Database = {
           created_at?: string
           display_name?: string | null
           id: string
+          points?: number | null
           preferred_language_id?: string | null
           total_recordings?: number | null
           updated_at?: string
@@ -68,6 +70,7 @@ export type Database = {
           created_at?: string
           display_name?: string | null
           id?: string
+          points?: number | null
           preferred_language_id?: string | null
           total_recordings?: number | null
           updated_at?: string
@@ -121,7 +124,9 @@ export type Database = {
           english_text: string
           estimated_time: number | null
           id: string
+          is_starter_task: boolean | null
           language_id: string
+          sequence_order: number | null
           type: string
         }
         Insert: {
@@ -132,7 +137,9 @@ export type Database = {
           english_text: string
           estimated_time?: number | null
           id?: string
+          is_starter_task?: boolean | null
           language_id: string
+          sequence_order?: number | null
           type: string
         }
         Update: {
@@ -143,7 +150,9 @@ export type Database = {
           english_text?: string
           estimated_time?: number | null
           id?: string
+          is_starter_task?: boolean | null
           language_id?: string
+          sequence_order?: number | null
           type?: string
         }
         Relationships: [

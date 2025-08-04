@@ -10,7 +10,7 @@ interface StatsCardProps {
   total?: number;
   icon: LucideIcon;
   description?: string;
-  color?: 'primary' | 'secondary' | 'success' | 'warning';
+  color?: 'primary' | 'secondary' | 'success' | 'warning' | 'gold';
   className?: string;
 }
 
@@ -18,7 +18,8 @@ const colorClasses = {
   primary: 'text-earth-primary bg-earth-primary/10',
   secondary: 'text-earth-secondary bg-earth-secondary/10',
   success: 'text-green-600 bg-green-100',
-  warning: 'text-yellow-600 bg-yellow-100'
+  warning: 'text-yellow-600 bg-yellow-100',
+  gold: 'text-yellow-600 bg-yellow-100'
 };
 
 export const StatsCard: React.FC<StatsCardProps> = ({

@@ -12,6 +12,8 @@ export interface Task {
   description?: string;
   difficulty: 'beginner' | 'intermediate' | 'advanced';
   estimatedTime: number; // in minutes
+  sequenceOrder?: number;
+  isStarterTask?: boolean;
   isCompleted?: boolean;
 }
 

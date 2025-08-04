@@ -32,6 +32,22 @@ interface Language {
   name: string;
   code: string;
   is_popular: boolean;
+  total_tasks?: number;
+  total_recordings?: number;
+}
+
+interface UserProgress {
+  recordings_count: number;
+  can_generate_next: boolean;
+  last_recording_at?: string;
+}
+
+interface UserProfile {
+  id: string;
+  display_name?: string;
+  avatar_url?: string;
+  points: number;
+  total_recordings: number;
 }
 
 const Index = () => {
@@ -43,10 +59,12 @@ const Index = () => {
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [isRecordingModalOpen, setIsRecordingModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [languageSearchTerm, setLanguageSearchTerm] = useState('');
   const [activeTab, setActiveTab] = useState('all');
   const [loading, setLoading] = useState(true);
   const [generatingTask, setGeneratingTask] = useState(false);
-  const [userProgress, setUserProgress] = useState<any>(null);
+  const [userProgress, setUserProgress] = useState<UserProgress | null>(null);
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -141,6 +159,8 @@ const Index = () => {
         description: task.description,
         difficulty: task.difficulty as 'beginner' | 'intermediate' | 'advanced',
         estimatedTime: task.estimated_time,
+        sequenceOrder: task.sequence_order,
+        isStarterTask: task.is_starter_task,
         isCompleted: task.recordings?.some((r: any) => r.user_id === user?.id) || false
       }));
       
@@ -226,8 +246,14 @@ const Index = () => {
     if (activeTab === 'all') return matchesSearch;
     if (activeTab === 'completed') return matchesSearch && task.isCompleted;
     if (activeTab === 'pending') return matchesSearch && !task.isCompleted;
+    if (activeTab === 'starter') return matchesSearch && (task.isStarterTask || false);
     return matchesSearch && task.type === activeTab;
   });
+
+  const filteredLanguages = languages.filter(language =>
+    language.name.toLowerCase().includes(languageSearchTerm.toLowerCase()) ||
+    language.code.toLowerCase().includes(languageSearchTerm.toLowerCase())
+  );
 
   // Stats calculations
   const stats = {
@@ -496,8 +522,9 @@ const Index = () => {
 
           {/* Task Tabs */}
           <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="grid w-full grid-cols-5 lg:w-auto lg:grid-cols-6">
+            <TabsList className="grid w-full grid-cols-6 lg:w-auto lg:grid-cols-7">
               <TabsTrigger value="all">All</TabsTrigger>
+              <TabsTrigger value="starter">Starter</TabsTrigger>
               <TabsTrigger value="word">Words</TabsTrigger>
               <TabsTrigger value="phrase">Phrases</TabsTrigger>
               <TabsTrigger value="sentence">Sentences</TabsTrigger>

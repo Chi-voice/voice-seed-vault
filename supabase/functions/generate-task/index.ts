@@ -21,6 +21,34 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
+    // Check if user should work on starter tasks first
+    const { data: starterTasks } = await supabase
+      .from('tasks')
+      .select(`
+        id, 
+        sequence_order,
+        recordings!recordings_task_id_fkey(id, user_id)
+      `)
+      .eq('language_id', language_id)
+      .eq('is_starter_task', true)
+      .order('sequence_order');
+
+    // Find the next uncompleted starter task
+    const nextStarterTask = starterTasks?.find(task => 
+      !task.recordings?.some((r: any) => r.user_id === user_id)
+    );
+
+    if (nextStarterTask) {
+      return new Response(JSON.stringify({ 
+        error: 'Please complete the starter tasks first',
+        nextStarterTask: nextStarterTask.id,
+        message: 'You should complete the standardized starter tasks before generating new ones'
+      }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     // Check if user can generate next task (has completed 2 recordings)
     const { data: progress } = await supabase
       .from('user_task_progress')
