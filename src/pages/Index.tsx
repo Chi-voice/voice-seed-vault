@@ -3,29 +3,22 @@ import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { TaskCard, Task } from '@/components/TaskCard';
-import { RecordingModal } from '@/components/RecordingModal';
-import { StatsCard } from '@/components/StatsCard';
 import { Badge } from '@/components/ui/badge';
 import { 
   Mic, 
   Users, 
   Globe, 
-  Trophy, 
   Search,
   Heart,
-  BookOpen,
-  Volume2,
-  Clock,
-  LogOut,
-  Sparkles
+  Sparkles,
+  MessageCircle,
+  Languages
 } from 'lucide-react';
 import heroImage from '@/assets/hero-image.jpg';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import type { Session, User } from '@supabase/supabase-js';
+import type { User } from '@supabase/supabase-js';
 
 interface Language {
   id: string;
@@ -36,77 +29,62 @@ interface Language {
   total_recordings?: number;
 }
 
-interface UserProgress {
-  recordings_count: number;
-  can_generate_next: boolean;
-  last_recording_at?: string;
+interface EthnologueLanguage {
+  name: string;
+  code: string;
+  region: string;
 }
 
-interface UserProfile {
-  id: string;
-  display_name?: string;
-  avatar_url?: string;
-  points: number;
-  total_recordings: number;
-}
+// Ethnologue language data (sample - you can expand this)
+const ETHNOLOGUE_LANGUAGES: EthnologueLanguage[] = [
+  { name: 'Navajo', code: 'nv', region: 'North America' },
+  { name: 'Cherokee', code: 'chr', region: 'North America' },
+  { name: 'Quechua', code: 'qu', region: 'South America' },
+  { name: 'Guaraní', code: 'gn', region: 'South America' },
+  { name: 'Aymara', code: 'ay', region: 'South America' },
+  { name: 'Inuktitut', code: 'iu', region: 'North America' },
+  { name: 'Maori', code: 'mi', region: 'Oceania' },
+  { name: 'Hawaiian', code: 'haw', region: 'Oceania' },
+  { name: 'Sami', code: 'se', region: 'Europe' },
+  { name: 'Welsh', code: 'cy', region: 'Europe' },
+  { name: 'Irish', code: 'ga', region: 'Europe' },
+  { name: 'Scottish Gaelic', code: 'gd', region: 'Europe' },
+  { name: 'Basque', code: 'eu', region: 'Europe' },
+  { name: 'Catalan', code: 'ca', region: 'Europe' },
+  { name: 'Tok Pisin', code: 'tpi', region: 'Oceania' },
+  { name: 'Ojibwe', code: 'oj', region: 'North America' },
+  { name: 'Lakota', code: 'lkt', region: 'North America' },
+  { name: 'Hopi', code: 'hop', region: 'North America' },
+  { name: 'Zuni', code: 'zun', region: 'North America' },
+  { name: 'Mohawk', code: 'moh', region: 'North America' },
+];
 
 const Index = () => {
   const [user, setUser] = useState<User | null>(null);
-  const [session, setSession] = useState<Session | null>(null);
   const [languages, setLanguages] = useState<Language[]>([]);
   const [selectedLanguage, setSelectedLanguage] = useState<string>('');
-  const [tasks, setTasks] = useState<Task[]>([]);
-  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
-  const [isRecordingModalOpen, setIsRecordingModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  const [languageSearchTerm, setLanguageSearchTerm] = useState('');
-  const [activeTab, setActiveTab] = useState('all');
   const [loading, setLoading] = useState(true);
   const [generatingTask, setGeneratingTask] = useState(false);
-  const [userProgress, setUserProgress] = useState<UserProgress | null>(null);
-  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const navigate = useNavigate();
   const { toast } = useToast();
 
   // Set up auth state listener
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        setSession(session);
-        setUser(session?.user ?? null);
-        
-        if (!session) {
-          navigate('/auth');
-        }
-      }
-    );
-
-    // Check for existing session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      
-      if (!session) {
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      setUser(user);
+      if (!user) {
         navigate('/auth');
       }
     });
-
-    return () => subscription.unsubscribe();
   }, [navigate]);
 
-  // Load languages and tasks
+  // Load languages
   useEffect(() => {
     if (user) {
       loadLanguages();
     }
   }, [user]);
-
-  useEffect(() => {
-    if (selectedLanguage && user) {
-      loadTasks();
-      loadUserProgress();
-    }
-  }, [selectedLanguage, user]);
 
   const loadLanguages = async () => {
     try {
@@ -119,12 +97,6 @@ const Index = () => {
       if (error) throw error;
       
       setLanguages(data || []);
-      
-      // Auto-select first popular language
-      const firstPopular = data?.find(lang => lang.is_popular);
-      if (firstPopular) {
-        setSelectedLanguage(firstPopular.id);
-      }
     } catch (error: any) {
       toast({
         title: "Error loading languages",
@@ -136,77 +108,21 @@ const Index = () => {
     }
   };
 
-  const loadTasks = async () => {
-    if (!selectedLanguage) return;
-    
-    try {
-      const { data, error } = await supabase
-        .from('tasks')
-        .select(`
-          *,
-          recordings!left(id, user_id)
-        `)
-        .eq('language_id', selectedLanguage)
-        .order('created_at', { ascending: false });
-      
-      if (error) throw error;
-      
-      // Map tasks to include completion status
-      const tasksWithCompletion = (data || []).map(task => ({
-        id: task.id,
-        type: task.type as 'word' | 'phrase' | 'sentence',
-        englishText: task.english_text,
-        description: task.description,
-        difficulty: task.difficulty as 'beginner' | 'intermediate' | 'advanced',
-        estimatedTime: task.estimated_time,
-        sequenceOrder: task.sequence_order,
-        isStarterTask: task.is_starter_task,
-        isCompleted: task.recordings?.some((r: any) => r.user_id === user?.id) || false
-      }));
-      
-      setTasks(tasksWithCompletion);
-    } catch (error: any) {
-      toast({
-        title: "Error loading tasks",
-        description: error.message,
-        variant: "destructive",
-      });
-    }
-  };
+  const startLanguageChat = async (languageId: string) => {
+    if (!user) return;
 
-  const loadUserProgress = async () => {
-    if (!selectedLanguage || !user) return;
-    
-    try {
-      const { data, error } = await supabase
-        .from('user_task_progress')
-        .select('*')
-        .eq('user_id', user.id)
-        .eq('language_id', selectedLanguage)
-        .single();
-      
-      if (error && error.code !== 'PGRST116') throw error;
-      
-      setUserProgress(data);
-    } catch (error: any) {
-      console.error('Error loading user progress:', error);
-    }
-  };
-
-  const generateNewTask = async () => {
-    if (!selectedLanguage || !user) return;
-    
+    // Generate initial task for the language
     setGeneratingTask(true);
     try {
       const { data, error } = await supabase.functions.invoke('generate-task', {
         body: {
-          language_id: selectedLanguage,
+          language_id: languageId,
           user_id: user.id
         }
       });
-      
+
       if (error) throw error;
-      
+
       if (data.error) {
         toast({
           title: "Task Generation",
@@ -215,17 +131,12 @@ const Index = () => {
         });
         return;
       }
-      
-      toast({
-        title: "New task generated!",
-        description: "A new AI-generated task is ready for recording.",
-      });
-      
-      loadTasks();
-      loadUserProgress();
+
+      // Navigate to chat
+      navigate(`/chat/${languageId}`);
     } catch (error: any) {
       toast({
-        title: "Error generating task",
+        title: "Error starting chat",
         description: error.message,
         variant: "destructive",
       });
@@ -234,36 +145,15 @@ const Index = () => {
     }
   };
 
-  const handleSignOut = async () => {
-    await supabase.auth.signOut();
-  };
+  // Filter languages based on search
+  const allLanguages = [...languages, ...ETHNOLOGUE_LANGUAGES];
+  const filteredLanguages = allLanguages
+    .filter(language =>
+      language.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      language.code.toLowerCase().includes(searchTerm.toLowerCase())
+    )
+    .slice(0, 20);
 
-  // Filter tasks based on search and tab
-  const filteredTasks = tasks.filter(task => {
-    const matchesSearch = task.englishText.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         task.description?.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    if (activeTab === 'all') return matchesSearch;
-    if (activeTab === 'completed') return matchesSearch && task.isCompleted;
-    if (activeTab === 'pending') return matchesSearch && !task.isCompleted;
-    if (activeTab === 'starter') return matchesSearch && (task.isStarterTask || false);
-    return matchesSearch && task.type === activeTab;
-  });
-
-  const filteredLanguages = languages.filter(language =>
-    language.name.toLowerCase().includes(languageSearchTerm.toLowerCase()) ||
-    language.code.toLowerCase().includes(languageSearchTerm.toLowerCase())
-  );
-
-  // Stats calculations
-  const stats = {
-    totalTasks: tasks.length,
-    completedTasks: tasks.filter(t => t.isCompleted).length,
-    wordsCompleted: tasks.filter(t => t.type === 'word' && t.isCompleted).length,
-    phrasesCompleted: tasks.filter(t => t.type === 'phrase' && t.isCompleted).length,
-    sentencesCompleted: tasks.filter(t => t.type === 'sentence' && t.isCompleted).length,
-    totalContributionTime: tasks.filter(t => t.isCompleted).reduce((acc, t) => acc + t.estimatedTime, 0)
-  };
 
   if (loading) {
     return (
@@ -276,57 +166,8 @@ const Index = () => {
     );
   }
 
-  const handleStartTask = (task: Task) => {
-    setSelectedTask(task);
-    setIsRecordingModalOpen(true);
-  };
-
-  const handleSubmitRecording = async (taskId: string, audioBlob: Blob, notes?: string) => {
-    if (!user) return;
-    
-    try {
-      // Upload audio file to Supabase storage (you'll need to set up storage bucket)
-      const fileName = `${user.id}/${taskId}_${Date.now()}.webm`;
-      
-      // For now, we'll create a placeholder URL since storage isn't configured
-      const audioUrl = `placeholder_${fileName}`;
-      
-      // Save recording to database
-      const { error } = await supabase
-        .from('recordings')
-        .insert({
-          user_id: user.id,
-          task_id: taskId,
-          audio_url: audioUrl,
-          notes: notes,
-          duration: 0 // You can calculate this from the blob
-        });
-      
-      if (error) throw error;
-      
-      toast({
-        title: "Recording saved!",
-        description: "Your translation has been saved successfully.",
-      });
-      
-      // Reload tasks and progress
-      loadTasks();
-      loadUserProgress();
-      
-    } catch (error: any) {
-      toast({
-        title: "Error saving recording",
-        description: error.message,
-        variant: "destructive",
-      });
-    }
-    
-    setIsRecordingModalOpen(false);
-    setSelectedTask(null);
-  };
-
   return (
-    <div className="min-h-screen bg-gradient-to-br from-earth-warm via-background to-earth-warm/50">
+    <div className="min-h-screen bg-gradient-to-br from-earth-warm via-background to-earth-warm/50 pb-20">
       {/* Hero Section */}
       <div className="relative overflow-hidden">
         <div 
@@ -336,20 +177,9 @@ const Index = () => {
           <div className="absolute inset-0 bg-earth-deep/60" />
           <div className="relative container mx-auto px-4 h-full flex items-center">
             <div className="max-w-2xl text-white">
-              <div className="flex items-center justify-between mb-4">
-                <h1 className="text-4xl md:text-6xl font-bold leading-tight">
-                  Chi Voice
-                </h1>
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  onClick={handleSignOut}
-                  className="border-white text-white hover:bg-white hover:text-earth-deep"
-                >
-                  <LogOut className="w-4 h-4 mr-2" />
-                  Sign Out
-                </Button>
-              </div>
+              <h1 className="text-4xl md:text-6xl font-bold leading-tight mb-4">
+                Chi Voice
+              </h1>
               <p className="text-xl md:text-2xl mb-6 opacity-90">
                 Preserving Indigenous Languages Through Your Voice
               </p>
@@ -357,63 +187,21 @@ const Index = () => {
                 Join our community in building the world's largest collection of indigenous language recordings. 
                 Your voice helps preserve cultural heritage for future generations.
               </p>
-              <div className="flex flex-wrap gap-4">
-                <Button 
-                  size="lg" 
-                  className="bg-earth-primary hover:bg-earth-primary/90 text-white px-8"
-                  onClick={() => document.getElementById('tasks')?.scrollIntoView({ behavior: 'smooth' })}
-                >
-                  <Mic className="w-5 h-5 mr-2" />
-                  Start Recording
-                </Button>
-                <Button 
-                  size="lg" 
-                  variant="outline" 
-                  className="border-white text-white hover:bg-white hover:text-earth-deep"
-                >
-                  Learn More
-                </Button>
-              </div>
+              <Button 
+                size="lg" 
+                className="bg-earth-primary hover:bg-earth-primary/90 text-white px-8"
+                onClick={() => document.getElementById('languages')?.scrollIntoView({ behavior: 'smooth' })}
+              >
+                <Mic className="w-5 h-5 mr-2" />
+                Start Recording
+              </Button>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Stats Section */}
+      {/* Mission Statement */}
       <div className="container mx-auto px-4 py-12">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
-          <StatsCard
-            title="Tasks Completed"
-            value={stats.completedTasks}
-            total={stats.totalTasks}
-            icon={Trophy}
-            description="Your contribution progress"
-            color="success"
-          />
-          <StatsCard
-            title="Words Recorded"
-            value={stats.wordsCompleted}
-            icon={BookOpen}
-            description="Individual words translated"
-            color="primary"
-          />
-          <StatsCard
-            title="Phrases Recorded"
-            value={stats.phrasesCompleted}
-            icon={Volume2}
-            description="Phrase translations completed"
-            color="secondary"
-          />
-          <StatsCard
-            title="Total Time"
-            value={stats.totalContributionTime}
-            icon={Clock}
-            description="Minutes contributed"
-            color="warning"
-          />
-        </div>
-
-        {/* Mission Statement */}
         <Card className="mb-12 border-l-4 border-l-earth-primary">
           <CardHeader>
             <CardTitle className="flex items-center space-x-2">
@@ -424,138 +212,96 @@ const Index = () => {
           <CardContent>
             <p className="text-lg text-muted-foreground leading-relaxed">
               Indigenous languages carry the wisdom, culture, and identity of communities worldwide. 
-              With many languages at risk of disappearing, Chi Language Vault empowers native speakers 
+              With many languages at risk of disappearing, Chi Voice empowers native speakers 
               to preserve their linguistic heritage through voice recordings that will train future AI 
               translation models and keep these precious languages alive for generations to come.
             </p>
           </CardContent>
         </Card>
 
-        {/* Tasks Section */}
-        <div id="tasks" className="space-y-8">
+        {/* Language Selection */}
+        <div id="languages" className="space-y-8">
           <div className="text-center space-y-4">
-            <h2 className="text-3xl font-bold text-foreground">Recording Tasks</h2>
+            <h2 className="text-3xl font-bold text-foreground">Choose Your Language</h2>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              Choose from words, phrases, or sentences to record in your indigenous language. 
-              Each contribution helps build our comprehensive language dataset.
+              Select an indigenous language to start your recording journey. Each contribution helps preserve cultural heritage.
             </p>
           </div>
 
-          {/* Language Selection and Controls */}
-          <div className="flex flex-col md:flex-row gap-4 items-center justify-between mb-6">
-            <div className="flex flex-col md:flex-row gap-4 items-center">
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Choose Language:</label>
-                <Select value={selectedLanguage} onValueChange={setSelectedLanguage}>
-                  <SelectTrigger className="w-64">
-                    <SelectValue placeholder="Select a language" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {languages
-                      .filter(lang => lang.is_popular)
-                      .map(language => (
-                        <SelectItem key={language.id} value={language.id}>
-                          {language.name}
-                        </SelectItem>
-                      ))}
-                    {languages.filter(lang => !lang.is_popular).length > 0 && (
-                      <>
-                        <div className="px-2 py-1 text-xs text-muted-foreground border-t">
-                          Other Languages
-                        </div>
-                        {languages
-                          .filter(lang => !lang.is_popular)
-                          .map(language => (
-                            <SelectItem key={language.id} value={language.id}>
-                              {language.name}
-                            </SelectItem>
-                          ))}
-                      </>
-                    )}
-                  </SelectContent>
-                </Select>
-              </div>
+          {/* Search */}
+          <div className="relative max-w-md mx-auto">
+            <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search languages..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-9"
+            />
+          </div>
+
+          {/* Language Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {filteredLanguages.map((language, index) => {
+              const isDbLanguage = 'id' in language;
+              const key = isDbLanguage ? language.id : `${language.code}-${index}`;
               
-              {selectedLanguage && (
-                <Button 
-                  onClick={generateNewTask}
-                  disabled={generatingTask || !userProgress?.can_generate_next}
-                  className="bg-earth-primary hover:bg-earth-primary/90"
+              return (
+                <Card 
+                  key={key}
+                  className="cursor-pointer hover:shadow-lg transition-shadow group"
+                  onClick={() => {
+                    if (isDbLanguage) {
+                      startLanguageChat(language.id);
+                    } else {
+                      toast({
+                        title: "Language not available",
+                        description: "This language is not yet available for recording.",
+                        variant: "destructive",
+                      });
+                    }
+                  }}
                 >
-                  <Sparkles className="w-4 h-4 mr-2" />
-                  {generatingTask ? 'Generating...' : 'Generate New Task'}
-                </Button>
-              )}
-            </div>
-            
-            {userProgress && (
-              <div className="text-center">
-                <Badge variant="outline" className="text-earth-primary">
-                  {userProgress.recordings_count}/2 recordings completed
-                </Badge>
-                {!userProgress.can_generate_next && (
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Complete 2 recordings to unlock new tasks
-                  </p>
-                )}
-              </div>
-            )}
-          </div>
-
-          {/* Search and Filters */}
-          <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
-            <div className="relative flex-1 max-w-md">
-              <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search tasks..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-9"
-              />
-            </div>
-            <div className="flex items-center space-x-2">
-              <Badge variant="outline" className="text-earth-primary">
-                {filteredTasks.length} tasks found
-              </Badge>
-            </div>
-          </div>
-
-          {/* Task Tabs */}
-          <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="grid w-full grid-cols-6 lg:w-auto lg:grid-cols-7">
-              <TabsTrigger value="all">All</TabsTrigger>
-              <TabsTrigger value="starter">Starter</TabsTrigger>
-              <TabsTrigger value="word">Words</TabsTrigger>
-              <TabsTrigger value="phrase">Phrases</TabsTrigger>
-              <TabsTrigger value="sentence">Sentences</TabsTrigger>
-              <TabsTrigger value="pending">Pending</TabsTrigger>
-              <TabsTrigger value="completed">Completed</TabsTrigger>
-            </TabsList>
-
-            <TabsContent value={activeTab} className="mt-6">
-              {filteredTasks.length > 0 ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {filteredTasks.map((task) => (
-                    <TaskCard
-                      key={task.id}
-                      task={task}
-                      onStart={handleStartTask}
-                    />
-                  ))}
-                </div>
-              ) : (
-                <Card className="text-center py-12">
-                  <CardContent>
-                    <Globe className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
-                    <h3 className="text-xl font-semibold mb-2">No tasks found</h3>
-                    <p className="text-muted-foreground">
-                      Try adjusting your search or filter criteria.
-                    </p>
+                  <CardContent className="p-6">
+                    <div className="flex items-center justify-between">
+                      <div className="flex-1">
+                        <h3 className="font-semibold text-lg group-hover:text-earth-primary transition-colors">
+                          {language.name}
+                        </h3>
+                        <p className="text-sm text-muted-foreground">
+                          {language.code} • {isDbLanguage ? 'Global' : (language as EthnologueLanguage).region}
+                        </p>
+                        {isDbLanguage && language.total_tasks && (
+                          <p className="text-xs text-muted-foreground mt-1">
+                            {language.total_tasks} tasks available
+                          </p>
+                        )}
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        {isDbLanguage && language.is_popular && (
+                          <Badge variant="default" className="bg-earth-primary">
+                            Popular
+                          </Badge>
+                        )}
+                        <Languages className="w-5 h-5 text-muted-foreground group-hover:text-earth-primary transition-colors" />
+                      </div>
+                    </div>
                   </CardContent>
                 </Card>
-              )}
-            </TabsContent>
-          </Tabs>
+              );
+            })}
+          </div>
+
+          {filteredLanguages.length === 0 && (
+            <Card className="text-center py-12">
+              <CardContent>
+                <Globe className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
+                <h3 className="text-xl font-semibold mb-2">No languages found</h3>
+                <p className="text-muted-foreground">
+                  Try adjusting your search criteria.
+                </p>
+              </CardContent>
+            </Card>
+          )}
         </div>
 
         {/* Community Impact Section */}
@@ -584,14 +330,6 @@ const Index = () => {
           </CardContent>
         </Card>
       </div>
-
-      {/* Recording Modal */}
-      <RecordingModal
-        isOpen={isRecordingModalOpen}
-        onClose={() => setIsRecordingModalOpen(false)}
-        task={selectedTask}
-        onSubmit={handleSubmitRecording}
-      />
     </div>
   );
 };
