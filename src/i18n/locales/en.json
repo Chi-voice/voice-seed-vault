@@ -1,0 +1,39 @@
+{
+  "app": {
+    "title": "Chi Voice",
+    "subtitle": "Preserving Indigenous Languages Through Your Voice"
+  },
+  "home": {
+    "heroTitle": "Chi Voice",
+    "heroSubtitle": "Preserving Indigenous Languages Through Your Voice",
+    "heroDescription": "Join our community in building the world's largest collection of indigenous language recordings. Your voice helps preserve cultural heritage for future generations.",
+    "startRecording": "Start Recording",
+    "mission": "Our Mission",
+    "missionDescription": "Indigenous languages carry the wisdom, culture, and identity of communities worldwide. With many languages at risk of disappearing, Chi Voice empowers native speakers to preserve their linguistic heritage through voice recordings that will train future AI translation models and keep these precious languages alive for generations to come.",
+    "chooseLanguage": "Choose Your Language",
+    "chooseLanguageDescription": "Select an indigenous language to start your recording journey. Each contribution helps preserve cultural heritage.",
+    "searchLanguages": "Search languages...",
+    "noLanguagesFound": "No languages found",
+    "tryAdjustingSearch": "Try adjusting your search criteria.",
+    "languageNotAvailable": "Language not available",
+    "languageNotAvailableDescription": "This language is not yet available for recording.",
+    "joinCommunity": "Join Our Global Community",
+    "communityDescription": "Together, we're creating the world's most comprehensive indigenous language dataset. Every recording you make helps preserve cultural heritage and enables future AI translation tools.",
+    "recordings": "Recordings",
+    "languages": "Languages",
+    "contributors": "Contributors",
+    "tasksAvailable": "tasks available"
+  },
+  "navigation": {
+    "home": "Home",
+    "chats": "Chats",
+    "profile": "Profile"
+  },
+  "settings": {
+    "language": "Language",
+    "theme": "Theme",
+    "light": "Light",
+    "dark": "Dark",
+    "system": "System"
+  }
+}

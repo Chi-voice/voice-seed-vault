@@ -1,23 +1,24 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
+import { ThemeToggle } from '@/components/ThemeToggle';
+import LanguageSelector from '@/components/LanguageSelector';
 import { 
   Mic, 
   Users, 
   Globe, 
   Search,
   Heart,
-  Sparkles,
-  MessageCircle,
   Languages
 } from 'lucide-react';
 import heroImage from '@/assets/hero-image.jpg';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { getGlottologLanguages, type GlottologLanguage } from '@/utils/glottologParser';
 import type { User } from '@supabase/supabase-js';
 
 interface Language {
@@ -30,26 +31,17 @@ interface Language {
 }
 
 
-// Import Glottolog language data
-import glottologLanguages from '@/data/glottolog-subset.json';
-
-interface GlottologLanguage {
-  id: string;
-  name: string;
-  family: string;
-  latitude?: number;
-  longitude?: number;
-}
 
 const Index = () => {
   const [user, setUser] = useState<User | null>(null);
   const [languages, setLanguages] = useState<Language[]>([]);
-  const [selectedLanguage, setSelectedLanguage] = useState<string>('');
+  const [glottologLanguages, setGlottologLanguages] = useState<GlottologLanguage[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(true);
   const [generatingTask, setGeneratingTask] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { t } = useTranslation();
 
   // Set up auth state listener
   useEffect(() => {
@@ -65,6 +57,7 @@ const Index = () => {
   useEffect(() => {
     if (user) {
       loadLanguages();
+      loadGlottologLanguages();
     }
   }, [user]);
 
@@ -87,6 +80,15 @@ const Index = () => {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadGlottologLanguages = async () => {
+    try {
+      const glottologData = await getGlottologLanguages();
+      setGlottologLanguages(glottologData);
+    } catch (error: any) {
+      console.error('Error loading Glottolog languages:', error);
     }
   };
 
@@ -146,7 +148,7 @@ const Index = () => {
       language.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
       ('family' in language && language.family?.toLowerCase().includes(searchTerm.toLowerCase()))
     )
-    .slice(0, 20);
+    .slice(0, 50); // Increased from 20 to 50 for better search results
 
 
   if (loading) {
@@ -154,7 +156,7 @@ const Index = () => {
       <div className="min-h-screen bg-gradient-to-br from-earth-warm via-background to-earth-warm/50 flex items-center justify-center">
         <div className="text-center">
           <Mic className="w-12 h-12 text-earth-primary mx-auto mb-4 animate-pulse" />
-          <p className="text-lg text-muted-foreground">Loading Chi Voice...</p>
+          <p className="text-lg text-muted-foreground">{t('home.heroTitle')}...</p>
         </div>
       </div>
     );
@@ -162,6 +164,12 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-earth-warm via-background to-earth-warm/50 pb-20">
+      {/* Header with Controls */}
+      <div className="absolute top-4 right-4 flex items-center space-x-4 z-10">
+        <LanguageSelector />
+        <ThemeToggle />
+      </div>
+
       {/* Hero Section */}
       <div className="relative overflow-hidden">
         <div 
@@ -172,14 +180,13 @@ const Index = () => {
           <div className="relative container mx-auto px-4 h-full flex items-center">
             <div className="max-w-2xl text-white">
               <h1 className="text-4xl md:text-6xl font-bold leading-tight mb-4">
-                Chi Voice
+                {t('home.heroTitle')}
               </h1>
               <p className="text-xl md:text-2xl mb-6 opacity-90">
-                Preserving Indigenous Languages Through Your Voice
+                {t('home.heroSubtitle')}
               </p>
               <p className="text-lg mb-8 opacity-80">
-                Join our community in building the world's largest collection of indigenous language recordings. 
-                Your voice helps preserve cultural heritage for future generations.
+                {t('home.heroDescription')}
               </p>
               <Button 
                 size="lg" 
@@ -187,7 +194,7 @@ const Index = () => {
                 onClick={() => document.getElementById('languages')?.scrollIntoView({ behavior: 'smooth' })}
               >
                 <Mic className="w-5 h-5 mr-2" />
-                Start Recording
+                {t('home.startRecording')}
               </Button>
             </div>
           </div>
@@ -200,15 +207,12 @@ const Index = () => {
           <CardHeader>
             <CardTitle className="flex items-center space-x-2">
               <Heart className="w-6 h-6 text-earth-primary" />
-              <span>Our Mission</span>
+              <span>{t('home.mission')}</span>
             </CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-lg text-muted-foreground leading-relaxed">
-              Indigenous languages carry the wisdom, culture, and identity of communities worldwide. 
-              With many languages at risk of disappearing, Chi Voice empowers native speakers 
-              to preserve their linguistic heritage through voice recordings that will train future AI 
-              translation models and keep these precious languages alive for generations to come.
+              {t('home.missionDescription')}
             </p>
           </CardContent>
         </Card>
@@ -216,9 +220,9 @@ const Index = () => {
         {/* Language Selection */}
         <div id="languages" className="space-y-8">
           <div className="text-center space-y-4">
-            <h2 className="text-3xl font-bold text-foreground">Choose Your Language</h2>
+            <h2 className="text-3xl font-bold text-foreground">{t('home.chooseLanguage')}</h2>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              Select an indigenous language to start your recording journey. Each contribution helps preserve cultural heritage.
+              {t('home.chooseLanguageDescription')}
             </p>
           </div>
 
@@ -226,7 +230,7 @@ const Index = () => {
           <div className="relative max-w-md mx-auto">
             <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Search languages..."
+              placeholder={t('home.searchLanguages')}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="pl-9"
@@ -248,8 +252,8 @@ const Index = () => {
                       startLanguageChat(language.id);
                     } else {
                       toast({
-                        title: "Language not available",
-                        description: "This language is not yet available for recording.",
+                        title: t('home.languageNotAvailable'),
+                        description: t('home.languageNotAvailableDescription'),
                         variant: "destructive",
                       });
                     }
@@ -266,7 +270,7 @@ const Index = () => {
                         </p>
                         {isDbLanguage && 'total_tasks' in language && language.total_tasks && (
                           <p className="text-xs text-muted-foreground mt-1">
-                            {language.total_tasks} tasks available
+                            {language.total_tasks} {t('home.tasksAvailable')}
                           </p>
                         )}
                       </div>
@@ -289,9 +293,9 @@ const Index = () => {
             <Card className="text-center py-12">
               <CardContent>
                 <Globe className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
-                <h3 className="text-xl font-semibold mb-2">No languages found</h3>
+                <h3 className="text-xl font-semibold mb-2">{t('home.noLanguagesFound')}</h3>
                 <p className="text-muted-foreground">
-                  Try adjusting your search criteria.
+                  {t('home.tryAdjustingSearch')}
                 </p>
               </CardContent>
             </Card>
@@ -302,23 +306,22 @@ const Index = () => {
         <Card className="mt-12 bg-gradient-to-r from-earth-primary to-earth-secondary text-white">
           <CardContent className="p-8 text-center">
             <Users className="w-16 h-16 mx-auto mb-4 opacity-90" />
-            <h3 className="text-2xl font-bold mb-4">Join Our Global Community</h3>
+            <h3 className="text-2xl font-bold mb-4">{t('home.joinCommunity')}</h3>
             <p className="text-lg opacity-90 mb-6 max-w-2xl mx-auto">
-              Together, we're creating the world's most comprehensive indigenous language dataset. 
-              Every recording you make helps preserve cultural heritage and enables future AI translation tools.
+              {t('home.communityDescription')}
             </p>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-2xl mx-auto">
               <div>
                 <div className="text-3xl font-bold">1,200+</div>
-                <div className="opacity-80">Recordings</div>
+                <div className="opacity-80">{t('home.recordings')}</div>
               </div>
               <div>
                 <div className="text-3xl font-bold">45</div>
-                <div className="opacity-80">Languages</div>
+                <div className="opacity-80">{t('home.languages')}</div>
               </div>
               <div>
                 <div className="text-3xl font-bold">300+</div>
-                <div className="opacity-80">Contributors</div>
+                <div className="opacity-80">{t('home.contributors')}</div>
               </div>
             </div>
           </CardContent>

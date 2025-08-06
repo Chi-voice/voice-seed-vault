@@ -1,0 +1,39 @@
+{
+  "app": {
+    "title": "智语",
+    "subtitle": "通过您的声音保护原住民语言"
+  },
+  "home": {
+    "heroTitle": "智语",
+    "heroSubtitle": "通过您的声音保护原住民语言",
+    "heroDescription": "加入我们的社区，建设世界上最大的原住民语言录音收藏。您的声音有助于为后代保护文化遗产。",
+    "startRecording": "开始录音",
+    "mission": "我们的使命",
+    "missionDescription": "原住民语言承载着全世界社区的智慧、文化和身份。随着许多语言面临消失的风险，智语赋权本族语言使用者通过语音录音保护他们的语言遗产，这些录音将训练未来的AI翻译模型，让这些珍贵的语言为后代传承。",
+    "chooseLanguage": "选择您的语言",
+    "chooseLanguageDescription": "选择一种原住民语言开始您的录音之旅。每个贡献都有助于保护文化遗产。",
+    "searchLanguages": "搜索语言...",
+    "noLanguagesFound": "未找到语言",
+    "tryAdjustingSearch": "尝试调整您的搜索条件。",
+    "languageNotAvailable": "语言不可用",
+    "languageNotAvailableDescription": "此语言尚未可用于录音。",
+    "joinCommunity": "加入我们的全球社区",
+    "communityDescription": "我们正在共同创建世界上最全面的原住民语言数据集。您制作的每个录音都有助于保护文化遗产并实现未来的AI翻译工具。",
+    "recordings": "录音",
+    "languages": "语言",
+    "contributors": "贡献者",
+    "tasksAvailable": "可用任务"
+  },
+  "navigation": {
+    "home": "主页",
+    "chats": "聊天",
+    "profile": "个人资料"
+  },
+  "settings": {
+    "language": "语言",
+    "theme": "主题",
+    "light": "浅色",
+    "dark": "深色",
+    "system": "系统"
+  }
+}

@@ -1,5 +1,6 @@
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { 
   Home,
@@ -10,6 +11,7 @@ import {
 const BottomNavigation = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { t } = useTranslation();
 
   const isActive = (path: string) => {
     if (path === '/') {
@@ -21,17 +23,17 @@ const BottomNavigation = () => {
   const navItems = [
     {
       icon: Home,
-      label: 'Home',
+      label: t('navigation.home'),
       path: '/'
     },
     {
       icon: MessageCircle,
-      label: 'Chats',
+      label: t('navigation.chats'),
       path: '/chats'
     },
     {
       icon: User,
-      label: 'Profile',
+      label: t('navigation.profile'),
       path: '/profile'
     }
   ];
