@@ -29,35 +29,17 @@ interface Language {
   total_recordings?: number;
 }
 
-interface EthnologueLanguage {
-  name: string;
-  code: string;
-  region: string;
-}
 
-// Ethnologue language data (sample - you can expand this)
-const ETHNOLOGUE_LANGUAGES: EthnologueLanguage[] = [
-  { name: 'Navajo', code: 'nv', region: 'North America' },
-  { name: 'Cherokee', code: 'chr', region: 'North America' },
-  { name: 'Quechua', code: 'qu', region: 'South America' },
-  { name: 'Guaraní', code: 'gn', region: 'South America' },
-  { name: 'Aymara', code: 'ay', region: 'South America' },
-  { name: 'Inuktitut', code: 'iu', region: 'North America' },
-  { name: 'Maori', code: 'mi', region: 'Oceania' },
-  { name: 'Hawaiian', code: 'haw', region: 'Oceania' },
-  { name: 'Sami', code: 'se', region: 'Europe' },
-  { name: 'Welsh', code: 'cy', region: 'Europe' },
-  { name: 'Irish', code: 'ga', region: 'Europe' },
-  { name: 'Scottish Gaelic', code: 'gd', region: 'Europe' },
-  { name: 'Basque', code: 'eu', region: 'Europe' },
-  { name: 'Catalan', code: 'ca', region: 'Europe' },
-  { name: 'Tok Pisin', code: 'tpi', region: 'Oceania' },
-  { name: 'Ojibwe', code: 'oj', region: 'North America' },
-  { name: 'Lakota', code: 'lkt', region: 'North America' },
-  { name: 'Hopi', code: 'hop', region: 'North America' },
-  { name: 'Zuni', code: 'zun', region: 'North America' },
-  { name: 'Mohawk', code: 'moh', region: 'North America' },
-];
+// Import Glottolog language data
+import glottologLanguages from '@/data/glottolog-subset.json';
+
+interface GlottologLanguage {
+  id: string;
+  name: string;
+  family: string;
+  latitude?: number;
+  longitude?: number;
+}
 
 const Index = () => {
   const [user, setUser] = useState<User | null>(null);
@@ -145,12 +127,24 @@ const Index = () => {
     }
   };
 
-  // Filter languages based on search
-  const allLanguages = [...languages, ...ETHNOLOGUE_LANGUAGES];
+  // Filter languages based on search - combine DB languages with Glottolog
+  const glottologFormatted = glottologLanguages.map(lang => ({
+    ...lang,
+    code: lang.id, // Use glottolog ID as code
+    region: lang.family || 'Unknown',
+    is_popular: false,
+    total_tasks: 0,
+    total_recordings: 0
+  }));
+  
+  type CombinedLanguage = Language | typeof glottologFormatted[0];
+  
+  const allLanguages: CombinedLanguage[] = [...languages, ...glottologFormatted];
   const filteredLanguages = allLanguages
-    .filter(language =>
+    .filter((language: CombinedLanguage) =>
       language.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      language.code.toLowerCase().includes(searchTerm.toLowerCase())
+      language.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      ('family' in language && language.family?.toLowerCase().includes(searchTerm.toLowerCase()))
     )
     .slice(0, 20);
 
@@ -242,8 +236,8 @@ const Index = () => {
           {/* Language Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {filteredLanguages.map((language, index) => {
-              const isDbLanguage = 'id' in language;
-              const key = isDbLanguage ? language.id : `${language.code}-${index}`;
+              const isDbLanguage = 'total_tasks' in language;
+              const key = language.id || `${language.code}-${index}`;
               
               return (
                 <Card 
@@ -268,16 +262,16 @@ const Index = () => {
                           {language.name}
                         </h3>
                         <p className="text-sm text-muted-foreground">
-                          {language.code} • {isDbLanguage ? 'Global' : (language as EthnologueLanguage).region}
+                          {language.code} • {isDbLanguage ? 'Global' : ('family' in language ? String(language.family) : 'Unknown')}
                         </p>
-                        {isDbLanguage && language.total_tasks && (
+                        {isDbLanguage && 'total_tasks' in language && language.total_tasks && (
                           <p className="text-xs text-muted-foreground mt-1">
                             {language.total_tasks} tasks available
                           </p>
                         )}
                       </div>
                       <div className="flex items-center space-x-2">
-                        {isDbLanguage && language.is_popular && (
+                        {isDbLanguage && 'is_popular' in language && language.is_popular && (
                           <Badge variant="default" className="bg-earth-primary">
                             Popular
                           </Badge>
