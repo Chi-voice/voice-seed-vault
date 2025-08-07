@@ -49,22 +49,34 @@ serve(async (req) => {
       });
     }
 
-    // Check if user can generate next task (has completed 2 recordings)
-    const { data: progress } = await supabase
-      .from('user_task_progress')
-      .select('can_generate_next, recordings_count')
-      .eq('user_id', user_id)
-      .eq('language_id', language_id)
-      .single();
+    // Check if there are any existing tasks for this language
+    const { count: taskCount } = await supabase
+      .from('tasks')
+      .select('*', { count: 'exact', head: true })
+      .eq('language_id', language_id);
 
-    if (!progress || !progress.can_generate_next) {
-      return new Response(JSON.stringify({ 
-        error: 'You need to complete 2 recordings before generating next task',
-        recordings_needed: 2 - (progress?.recordings_count || 0)
-      }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+    // If no tasks exist, create a starter task
+    if (!taskCount || taskCount === 0) {
+      console.log('No tasks found for language, creating starter task');
+      // Continue to task generation without checking progress
+    } else {
+      // Check if user can generate next task (has completed 2 recordings)
+      const { data: progress } = await supabase
+        .from('user_task_progress')
+        .select('can_generate_next, recordings_count')
+        .eq('user_id', user_id)
+        .eq('language_id', language_id)
+        .single();
+
+      if (!progress || !progress.can_generate_next) {
+        return new Response(JSON.stringify({ 
+          error: 'You need to complete 2 recordings before generating next task',
+          recordings_needed: 2 - (progress?.recordings_count || 0)
+        }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
     }
 
     // Get language name

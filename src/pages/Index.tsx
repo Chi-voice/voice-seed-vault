@@ -95,38 +95,8 @@ const Index = () => {
   const startLanguageChat = async (languageId: string) => {
     if (!user) return;
 
-    // Generate initial task for the language
-    setGeneratingTask(true);
-    try {
-      const { data, error } = await supabase.functions.invoke('generate-task', {
-        body: {
-          language_id: languageId,
-          user_id: user.id
-        }
-      });
-
-      if (error) throw error;
-
-      if (data.error) {
-        toast({
-          title: "Task Generation",
-          description: data.error,
-          variant: "destructive",
-        });
-        return;
-      }
-
-      // Navigate to chat
-      navigate(`/chat/${languageId}`);
-    } catch (error: any) {
-      toast({
-        title: "Error starting chat",
-        description: error.message,
-        variant: "destructive",
-      });
-    } finally {
-      setGeneratingTask(false);
-    }
+    // Navigate directly to chat page - let the chat page handle task generation
+    navigate(`/chat/${languageId}`);
   };
 
   // Filter languages based on search - combine DB languages with Glottolog

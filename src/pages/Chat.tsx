@@ -64,6 +64,13 @@ const Chat = () => {
     }
   }, [languageId, user]);
 
+  // Auto-generate first task if no messages exist
+  useEffect(() => {
+    if (messages.length === 0 && language && user && !generatingTask) {
+      generateNextTask();
+    }
+  }, [messages, language, user]);
+
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
