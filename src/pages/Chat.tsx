@@ -144,7 +144,7 @@ const Chat = () => {
   };
 
   const loadChatHistory = async () => {
-    if (!languageId || !user || !language) return;
+    if (!user || !language) return;
 
     try {
       const { data, error } = await supabase
