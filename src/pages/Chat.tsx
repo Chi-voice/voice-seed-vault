@@ -60,9 +60,14 @@ const Chat = () => {
   useEffect(() => {
     if (languageId && user) {
       loadLanguage();
-      loadChatHistory();
     }
   }, [languageId, user]);
+
+  useEffect(() => {
+    if (language && user) {
+      loadChatHistory();
+    }
+  }, [language, user]);
 
   // Auto-generate first task if no messages exist
   useEffect(() => {
@@ -83,11 +88,49 @@ const Chat = () => {
     if (!languageId) return;
 
     try {
-      const { data, error } = await supabase
+      // First try to find language by ID (UUID)
+      let { data, error } = await supabase
         .from('languages')
         .select('*')
         .eq('id', languageId)
-        .single();
+        .maybeSingle();
+
+      // If not found by UUID, try to find by code (Glottolog ID)
+      if (!data && !error) {
+        const { data: codeData, error: codeError } = await supabase
+          .from('languages')
+          .select('*')
+          .eq('code', languageId)
+          .maybeSingle();
+        
+        data = codeData;
+        error = codeError;
+      }
+
+      // If still not found, create the language from Glottolog data
+      if (!data && !error) {
+        // Import glottolog parser and find the language
+        const { getGlottologLanguages } = await import('@/utils/glottologParser');
+        const glottologLanguages = await getGlottologLanguages();
+        const glottologLang = glottologLanguages.find(lang => lang.id === languageId);
+        
+        if (glottologLang) {
+          const { data: newLang, error: createError } = await supabase
+            .from('languages')
+            .insert({
+              name: glottologLang.name,
+              code: glottologLang.id,
+              is_popular: false
+            })
+            .select()
+            .single();
+          
+          if (createError) throw createError;
+          data = newLang;
+        } else {
+          throw new Error('Language not found');
+        }
+      }
 
       if (error) throw error;
       setLanguage(data);
@@ -101,7 +144,7 @@ const Chat = () => {
   };
 
   const loadChatHistory = async () => {
-    if (!languageId || !user) return;
+    if (!languageId || !user || !language) return;
 
     try {
       const { data, error } = await supabase
@@ -110,7 +153,7 @@ const Chat = () => {
           *,
           recordings!left(id, user_id, audio_url, created_at)
         `)
-        .eq('language_id', languageId)
+        .eq('language_id', language.id) // Use the actual database language ID
         .order('created_at', { ascending: true });
 
       if (error) throw error;
@@ -157,13 +200,13 @@ const Chat = () => {
   };
 
   const generateNextTask = async () => {
-    if (!languageId || !user) return;
+    if (!language || !user) return;
 
     setGeneratingTask(true);
     try {
       const { data, error } = await supabase.functions.invoke('generate-task', {
         body: {
-          language_id: languageId,
+          language_id: language.id, // Use the actual database language ID
           user_id: user.id
         }
       });
