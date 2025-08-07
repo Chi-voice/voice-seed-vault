@@ -21,6 +21,30 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
+    // First, we need to resolve the language to get the correct database ID
+    let languageDbId = language_id;
+    
+    // Try to find language by UUID first
+    let { data: langCheck } = await supabase
+      .from('languages')
+      .select('id, name, code')
+      .eq('id', language_id)
+      .maybeSingle();
+
+    // If not found by UUID, try to find by code (Glottolog ID)
+    if (!langCheck) {
+      const { data: codeData } = await supabase
+        .from('languages')
+        .select('id, name, code')
+        .eq('code', language_id)
+        .maybeSingle();
+      
+      if (codeData) {
+        langCheck = codeData;
+        languageDbId = codeData.id;
+      }
+    }
+
     // Check if user should work on starter tasks first
     const { data: starterTasks } = await supabase
       .from('tasks')
@@ -29,7 +53,7 @@ serve(async (req) => {
         sequence_order,
         recordings!recordings_task_id_fkey(id, user_id)
       `)
-      .eq('language_id', language_id)
+      .eq('language_id', languageDbId)
       .eq('is_starter_task', true)
       .order('sequence_order');
 
@@ -53,7 +77,7 @@ serve(async (req) => {
     const { count: taskCount } = await supabase
       .from('tasks')
       .select('*', { count: 'exact', head: true })
-      .eq('language_id', language_id);
+      .eq('language_id', languageDbId);
 
     // If no tasks exist, create a starter task
     if (!taskCount || taskCount === 0) {
@@ -65,7 +89,7 @@ serve(async (req) => {
         .from('user_task_progress')
         .select('can_generate_next, recordings_count')
         .eq('user_id', user_id)
-        .eq('language_id', language_id)
+        .eq('language_id', languageDbId)
         .single();
 
       if (!progress || !progress.can_generate_next) {
@@ -79,12 +103,64 @@ serve(async (req) => {
       }
     }
 
-    // Get language name
-    const { data: language } = await supabase
+    // Get language name - try multiple approaches
+    let { data: language } = await supabase
       .from('languages')
-      .select('name')
+      .select('id, name, code')
       .eq('id', language_id)
-      .single();
+      .maybeSingle();
+
+    // If not found by UUID, try to find by code (Glottolog ID)
+    if (!language) {
+      const { data: codeData } = await supabase
+        .from('languages')
+        .select('id, name, code')
+        .eq('code', language_id)
+        .maybeSingle();
+      
+      language = codeData;
+    }
+
+    // If still not found, this might be a Glottolog ID - create the language
+    if (!language) {
+      console.log('Language not found in database, attempting to load from Glottolog data');
+      
+      // For edge functions, we need to fetch and parse Glottolog data manually
+      try {
+        const csvResponse = await fetch('https://d6d1e450-66f8-4d07-a9a9-dff8436e7aad.lovableproject.com/glottolog-full.csv');
+        if (csvResponse.ok) {
+          const csvText = await csvResponse.text();
+          const lines = csvText.split('\n');
+          const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
+          
+          for (let i = 1; i < lines.length; i++) {
+            const values = lines[i].split(',').map(v => v.trim().replace(/"/g, ''));
+            if (values[0] === language_id) { // Assuming first column is ID
+              const languageName = values[1] || 'Unknown Language'; // Assuming second column is name
+              
+              // Create the language in database
+              const { data: newLang, error: createError } = await supabase
+                .from('languages')
+                .insert({
+                  name: languageName,
+                  code: language_id,
+                  is_popular: false
+                })
+                .select('id, name, code')
+                .single();
+              
+              if (!createError) {
+                language = newLang;
+                console.log('Created new language:', languageName);
+                break;
+              }
+            }
+          }
+        }
+      } catch (e) {
+        console.error('Error loading Glottolog data:', e);
+      }
+    }
 
     if (!language) {
       return new Response(JSON.stringify({ error: 'Language not found' }), {
@@ -170,7 +246,7 @@ serve(async (req) => {
         description: taskData.description,
         type: randomType,
         difficulty: randomDifficulty,
-        language_id: language_id,
+        language_id: language.id, // Use the actual database language ID
         estimated_time: taskData.estimated_time || 2,
         created_by_ai: true
       })
@@ -194,7 +270,7 @@ serve(async (req) => {
         updated_at: new Date().toISOString()
       })
       .eq('user_id', user_id)
-      .eq('language_id', language_id);
+      .eq('language_id', language.id); // Use the actual database language ID
 
     console.log('Task generated successfully:', newTask.id);
 
