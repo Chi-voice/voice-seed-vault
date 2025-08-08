@@ -31,28 +31,59 @@ serve(async (req) => {
 
     const supabase = createClient(supabaseUrl, serviceRoleKey);
 
-    // Try to find by code
-    const { data: existing, error: findError } = await supabase
+    // Try to find by code first
+    const { data: existingByCode, error: findByCodeError } = await supabase
       .from("languages")
       .select("*")
       .eq("code", code)
       .maybeSingle();
 
-    if (findError) throw findError;
+    if (findByCodeError) throw findByCodeError;
 
-    if (existing) {
+    if (existingByCode) {
       return new Response(
-        JSON.stringify({ language: existing }),
+        JSON.stringify({ language: existingByCode }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    // Insert a new language
+    // Then try to find by name (handle unique constraint on name)
+    const { data: existingByName, error: findByNameError } = await supabase
+      .from("languages")
+      .select("*")
+      .eq("name", name)
+      .maybeSingle();
+
+    if (findByNameError) throw findByNameError;
+
+    if (existingByName) {
+      // If found by name, ensure code is set/updated
+      if (!existingByName.code || existingByName.code !== code) {
+        const { data: updated, error: updateError } = await supabase
+          .from("languages")
+          .update({ code })
+          .eq("id", existingByName.id)
+          .select("*")
+          .single();
+        if (updateError) throw updateError;
+        return new Response(
+          JSON.stringify({ language: updated }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      return new Response(
+        JSON.stringify({ language: existingByName }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Neither code nor name exists: insert new
     const { data: inserted, error: insertError } = await supabase
       .from("languages")
       .insert({ code, name, is_popular: false })
       .select("*")
       .single();
+
 
     if (insertError) throw insertError;
 
