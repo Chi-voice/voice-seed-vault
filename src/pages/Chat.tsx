@@ -45,6 +45,7 @@ const Chat = () => {
   const [currentTask, setCurrentTask] = useState<Message | null>(null);
   const [generatingTask, setGeneratingTask] = useState(false);
   const [playingAudio, setPlayingAudio] = useState<string | null>(null);
+  const [progress, setProgress] = useState<{ recordings_count: number; can_generate_next: boolean } | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
@@ -66,6 +67,7 @@ const Chat = () => {
   useEffect(() => {
     if (language && user) {
       loadChatHistory();
+      loadProgress();
     }
   }, [language, user]);
 
@@ -157,6 +159,23 @@ const Chat = () => {
     }
   };
 
+  const loadProgress = async () => {
+    if (!user || !language) return;
+    try {
+      const { data, error } = await supabase
+        .from('user_task_progress')
+        .select('recordings_count, can_generate_next')
+        .eq('user_id', user.id)
+        .eq('language_id', language.id)
+        .maybeSingle();
+      if (error) throw error;
+      setProgress(data ?? { recordings_count: 0, can_generate_next: false });
+    } catch (error: any) {
+      // Non-blocking: just log and continue
+      console.warn('Failed to load progress', error);
+    }
+  };
+
   const loadChatHistory = async () => {
     if (!user || !language) return;
 
@@ -215,6 +234,16 @@ const Chat = () => {
 
   const generateNextTask = async () => {
     if (!language || !user) return;
+
+    // Guard: require sufficient progress before generating next task
+    if (progress && !progress.can_generate_next) {
+      toast({
+        title: 'Complete more recordings',
+        description: 'Please complete at least 2 recordings to unlock the next task.',
+        variant: 'destructive',
+      });
+      return;
+    }
 
     setGeneratingTask(true);
     try {
@@ -284,6 +313,7 @@ const Chat = () => {
       });
       
       loadChatHistory();
+      await loadProgress();
     } catch (error: any) {
       toast({
         title: "Error saving recording",
@@ -415,12 +445,12 @@ const Chat = () => {
         ) : (
           <Button
             onClick={generateNextTask}
-            disabled={generatingTask}
+            disabled={generatingTask || !(progress?.can_generate_next)}
             className="w-full bg-earth-primary hover:bg-earth-primary/90"
             size="lg"
           >
             <ChevronRight className="w-5 h-5 mr-2" />
-            {generatingTask ? 'Generating...' : 'Next Task'}
+            {generatingTask ? 'Generating...' : (progress?.can_generate_next ? 'Next Task' : 'Record 2 to unlock')}
           </Button>
         )}
       </div>
