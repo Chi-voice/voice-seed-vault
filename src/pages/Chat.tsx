@@ -87,58 +87,72 @@ const Chat = () => {
   const loadLanguage = async () => {
     if (!languageId) return;
 
-    try {
-      // First try to find language by ID (UUID)
-      let { data, error } = await supabase
-        .from('languages')
-        .select('*')
-        .eq('id', languageId)
-        .maybeSingle();
+    const isValidUUID = (str: string) =>
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(str);
 
-      // If not found by UUID, try to find by code (Glottolog ID)
-      if (!data && !error) {
-        const { data: codeData, error: codeError } = await supabase
+    try {
+      let data: any = null;
+
+      // If the route param looks like a UUID, try by id first
+      if (isValidUUID(languageId)) {
+        const { data: byId, error: byIdError } = await supabase
+          .from('languages')
+          .select('*')
+          .eq('id', languageId)
+          .maybeSingle();
+
+        if (byIdError) throw byIdError;
+        if (byId) data = byId;
+      }
+
+      // Fallback: try by code (Glottolog ID)
+      if (!data) {
+        const { data: byCode, error: byCodeError } = await supabase
           .from('languages')
           .select('*')
           .eq('code', languageId)
           .maybeSingle();
-        
-        data = codeData;
-        error = codeError;
+
+        if (byCodeError) throw byCodeError;
+        if (byCode) data = byCode;
       }
 
-      // If still not found, create the language from Glottolog data
-      if (!data && !error) {
-        // Import glottolog parser and find the language
+      // If still not found, create via edge function (bypasses RLS) using Glottolog metadata
+      if (!data) {
         const { getGlottologLanguages } = await import('@/utils/glottologParser');
         const glottologLanguages = await getGlottologLanguages();
-        const glottologLang = glottologLanguages.find(lang => lang.id === languageId);
-        
-        if (glottologLang) {
-          const { data: newLang, error: createError } = await supabase
-            .from('languages')
-            .insert({
-              name: glottologLang.name,
-              code: glottologLang.id,
-              is_popular: false
-            })
-            .select()
-            .single();
-          
-          if (createError) throw createError;
-          data = newLang;
-        } else {
+        const glottologLang = glottologLanguages.find((lang) => lang.id === languageId);
+
+        if (!glottologLang) {
           throw new Error('Language not found');
+        }
+
+        const { data: ensured, error: ensureError } = await supabase.functions.invoke('upsert-language', {
+          body: { code: glottologLang.id, name: glottologLang.name },
+        });
+        if (ensureError) throw ensureError;
+
+        // Edge function returns the language row
+        data = ensured?.language ?? ensured;
+
+        // As a safety net, fetch again by code if needed
+        if (!data?.id) {
+          const { data: inserted } = await supabase
+            .from('languages')
+            .select('*')
+            .eq('code', glottologLang.id)
+            .maybeSingle();
+          data = inserted;
         }
       }
 
-      if (error) throw error;
+      if (!data) throw new Error('Failed to resolve language');
       setLanguage(data);
     } catch (error: any) {
       toast({
-        title: "Error loading language",
+        title: 'Error loading language',
         description: error.message,
-        variant: "destructive",
+        variant: 'destructive',
       });
     }
   };
