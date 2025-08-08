@@ -73,10 +73,10 @@ const Chat = () => {
 
   // Auto-generate first task if no messages exist
   useEffect(() => {
-    if (messages.length === 0 && language && user && !generatingTask) {
+    if (messages.length === 0 && language && user && !generatingTask && progress !== null) {
       generateNextTask();
     }
-  }, [messages, language, user]);
+  }, [messages, language, user, progress]);
 
   useEffect(() => {
     scrollToBottom();
@@ -235,8 +235,8 @@ const Chat = () => {
   const generateNextTask = async () => {
     if (!language || !user) return;
 
-    // Guard: require sufficient progress before generating next task
-    if (progress && !progress.can_generate_next) {
+    // Guard: require sufficient progress before generating next task (allow first task)
+    if (messages.length > 0 && (!progress || !progress.can_generate_next)) {
       toast({
         title: 'Complete more recordings',
         description: 'Please complete at least 2 recordings to unlock the next task.',

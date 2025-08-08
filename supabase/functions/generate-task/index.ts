@@ -107,7 +107,7 @@ serve(async (req) => {
     let { data: language } = await supabase
       .from('languages')
       .select('id, name, code')
-      .eq('id', language_id)
+      .eq('id', languageDbId)
       .maybeSingle();
 
     // If not found by UUID, try to find by code (Glottolog ID)
@@ -216,8 +216,64 @@ serve(async (req) => {
 
     if (!openAIResponse.ok) {
       console.error('OpenAI API error:', openAIResponse.status);
-      return new Response(JSON.stringify({ error: 'Failed to generate task' }), {
-        status: 500,
+
+      // Fallback: create a simple deterministic starter task without OpenAI
+      const fallbackMap = {
+        word: {
+          text: 'hello',
+          description: `Translate the common greeting "hello" into ${language.name}.`,
+          estimated: 1
+        },
+        phrase: {
+          text: 'How are you?',
+          description: `Translate this everyday phrase into ${language.name}.`,
+          estimated: 2
+        },
+        sentence: {
+          text: 'My name is ____.',
+          description: `Translate and say this simple self-introduction in ${language.name}.`,
+          estimated: 2
+        }
+      } as const;
+
+      const f = fallbackMap[randomType as 'word' | 'phrase' | 'sentence'];
+
+      const { data: newTask, error: taskError } = await supabase
+        .from('tasks')
+        .insert({
+          english_text: f.text,
+          description: f.description,
+          type: randomType,
+          difficulty: randomDifficulty,
+          language_id: language.id,
+          estimated_time: f.estimated,
+          created_by_ai: false,
+          is_starter_task: !taskCount || taskCount === 0
+        })
+        .select()
+        .single();
+
+      if (taskError) {
+        console.error('Database error (fallback):', taskError);
+        return new Response(JSON.stringify({ error: 'Failed to save task' }), {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      await supabase
+        .from('user_task_progress')
+        .update({
+          recordings_count: 0,
+          can_generate_next: false,
+          updated_at: new Date().toISOString()
+        })
+        .eq('user_id', user_id)
+        .eq('language_id', language.id);
+
+      console.log('Task generated via fallback successfully:', newTask.id);
+
+      return new Response(JSON.stringify({ task: newTask, fallback: true }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
@@ -232,8 +288,64 @@ serve(async (req) => {
       taskData = JSON.parse(generatedContent);
     } catch (e) {
       console.error('Failed to parse OpenAI response:', e);
-      return new Response(JSON.stringify({ error: 'Invalid response from AI' }), {
-        status: 500,
+
+      // Fallback: create a simple deterministic task if AI output is invalid
+      const fallbackMap = {
+        word: {
+          text: 'hello',
+          description: `Translate the common greeting "hello" into ${language.name}.`,
+          estimated: 1
+        },
+        phrase: {
+          text: 'How are you?',
+          description: `Translate this everyday phrase into ${language.name}.`,
+          estimated: 2
+        },
+        sentence: {
+          text: 'My name is ____.',
+          description: `Translate and say this simple self-introduction in ${language.name}.`,
+          estimated: 2
+        }
+      } as const;
+
+      const f = fallbackMap[randomType as 'word' | 'phrase' | 'sentence'];
+
+      const { data: newTask, error: taskError } = await supabase
+        .from('tasks')
+        .insert({
+          english_text: f.text,
+          description: f.description,
+          type: randomType,
+          difficulty: randomDifficulty,
+          language_id: language.id,
+          estimated_time: f.estimated,
+          created_by_ai: false,
+          is_starter_task: !taskCount || taskCount === 0
+        })
+        .select()
+        .single();
+
+      if (taskError) {
+        console.error('Database error (fallback-parse):', taskError);
+        return new Response(JSON.stringify({ error: 'Failed to save task' }), {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      await supabase
+        .from('user_task_progress')
+        .update({
+          recordings_count: 0,
+          can_generate_next: false,
+          updated_at: new Date().toISOString()
+        })
+        .eq('user_id', user_id)
+        .eq('language_id', language.id);
+
+      console.log('Task generated via fallback (parse) successfully:', newTask.id);
+
+      return new Response(JSON.stringify({ task: newTask, fallback: true }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
