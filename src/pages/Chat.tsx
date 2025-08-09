@@ -160,7 +160,7 @@ const Chat = () => {
   };
 
   const loadProgress = async () => {
-    if (!user || !language) return;
+    if (!user || !language) return null as { recordings_count: number; can_generate_next: boolean } | null;
     try {
       const { data, error } = await supabase
         .from('user_task_progress')
@@ -169,10 +169,13 @@ const Chat = () => {
         .eq('language_id', language.id)
         .maybeSingle();
       if (error) throw error;
-      setProgress(data ?? { recordings_count: 0, can_generate_next: false });
+      const value = data ?? { recordings_count: 0, can_generate_next: false };
+      setProgress(value);
+      return value;
     } catch (error: any) {
       // Non-blocking: just log and continue
       console.warn('Failed to load progress', error);
+      return null;
     }
   };
 
@@ -232,11 +235,11 @@ const Chat = () => {
     }
   };
 
-  const generateNextTask = async () => {
+  const generateNextTask = async (force = false) => {
     if (!language || !user) return;
 
     // Guard: require sufficient progress before generating next task (allow first task)
-    if (messages.length > 0 && (!progress || !progress.can_generate_next)) {
+    if (!force && messages.length > 0 && (!progress || !progress.can_generate_next)) {
       toast({
         title: 'Complete more recordings',
         description: 'Please complete at least 2 recordings to unlock the next task.',
@@ -312,8 +315,12 @@ const Chat = () => {
         description: "Your translation has been saved successfully.",
       });
       
-      loadChatHistory();
-      await loadProgress();
+      const updated = await loadProgress();
+      if (updated?.can_generate_next) {
+        await generateNextTask(true);
+        await loadChatHistory();
+        await loadProgress();
+      }
     } catch (error: any) {
       toast({
         title: "Error saving recording",
@@ -349,9 +356,7 @@ const Chat = () => {
   };
 
   const nextIncompleteTask = getNextIncompleteTask();
-  const lastSystemTask: Message | null =
-    [...messages].reverse().find((m) => m.type === 'system') || null;
-
+  
   return (
     <div className="flex flex-col h-screen bg-background">
       {/* Header */}
@@ -400,23 +405,38 @@ const Chat = () => {
                 <p className="text-sm">{message.content}</p>
                 
                 {message.type === 'user' && message.audioUrl && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => playAudio(message.audioUrl!)}
-                    className="p-1 h-8 w-8"
-                  >
-                    {playingAudio === message.audioUrl ? (
-                      <Pause className="w-4 h-4" />
-                    ) : (
-                      <Play className="w-4 h-4" />
+                  <div className="flex flex-col items-end gap-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => playAudio(message.audioUrl!)}
+                      className="p-1 h-8 w-8"
+                    >
+                      {playingAudio === message.audioUrl ? (
+                        <Pause className="w-4 h-4" />
+                      ) : (
+                        <Play className="w-4 h-4" />
+                      )}
+                    </Button>
+                    {progress && !progress.can_generate_next && (
+                      <Button
+                        size="sm"
+                        onClick={() => {
+                          const baseId = message.id.replace('-recording', '');
+                          const sysMessage = messages.find(m => m.id === baseId && m.type === 'system');
+                          if (sysMessage) handleStartRecording(sysMessage);
+                        }}
+                        className="bg-earth-primary hover:bg-earth-primary/90"
+                      >
+                        <Mic className="w-4 h-4 mr-2" />
+                        Record Again
+                      </Button>
                     )}
-                  </Button>
+                  </div>
                 )}
                 
-                {message.type === 'system' && (
-                  (!messages.find(m => m.id === `${message.id}-recording` && m.type === 'user')) ||
-                  (progress && !progress.can_generate_next)
+                {message.type === 'system' && !messages.find(m => 
+                  m.id === `${message.id}-recording` && m.type === 'user'
                 ) && (
                   <Button
                     size="sm"
@@ -424,7 +444,7 @@ const Chat = () => {
                     className="bg-earth-primary hover:bg-earth-primary/90"
                   >
                     <Mic className="w-4 h-4 mr-2" />
-                    {messages.find(m => m.id === `${message.id}-recording` && m.type === 'user') ? 'Record Again' : 'Record'}
+                    Record
                   </Button>
                 )}
               </div>
@@ -445,18 +465,9 @@ const Chat = () => {
             <Mic className="w-5 h-5 mr-2" />
             Record Current Task
           </Button>
-        ) : (progress && !progress.can_generate_next && lastSystemTask) ? (
-          <Button
-            onClick={() => handleStartRecording(lastSystemTask)}
-            className="w-full bg-earth-primary hover:bg-earth-primary/90"
-            size="lg"
-          >
-            <Mic className="w-5 h-5 mr-2" />
-            Record Again
-          </Button>
         ) : (
           <Button
-            onClick={generateNextTask}
+            onClick={() => generateNextTask()}
             disabled={generatingTask || !(progress?.can_generate_next)}
             className="w-full bg-earth-primary hover:bg-earth-primary/90"
             size="lg"
