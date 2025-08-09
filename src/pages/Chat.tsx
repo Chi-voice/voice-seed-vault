@@ -324,10 +324,13 @@ const Chat = () => {
 
       // Optimistically add the new recording to the chat UI
       const sysMessage = messages.find((m) => m.type === 'system' && m.id === taskId);
-      const existingUserRecordings = messages.filter(
-        (m) => m.type === 'user' && ((m.taskId && m.taskId === taskId) || m.id.startsWith(`${taskId}-recording`))
-      );
-      const nextIndex = existingUserRecordings.length + 1;
+      const existingIndexes = messages
+        .filter((m) => m.type === 'user' && m.id.startsWith(`${taskId}-recording-`))
+        .map((m) => {
+          const parts = m.id.split('-recording-');
+          return Number(parts[1] || 0);
+        });
+      const nextIndex = (existingIndexes.length ? Math.max(...existingIndexes) : 0) + 1;
 
       const optimisticMessage: Message = {
         id: `${taskId}-recording-${nextIndex}`,
@@ -379,8 +382,11 @@ const Chat = () => {
         await generateNextTask(true);
         await Promise.all([loadChatHistory(), loadProgress()]);
       } else {
-        // Just refresh chat to include server timestamps/order
-        loadChatHistory();
+        // Defer refresh briefly to avoid overwriting optimistic UI before DB read is ready
+        setTimeout(() => {
+          loadChatHistory();
+          loadProgress();
+        }, 800);
       }
     } catch (error: any) {
       toast({
@@ -437,6 +443,19 @@ const Chat = () => {
             {messages.filter(m => m.type === 'user').length} recordings completed
           </p>
         </div>
+      </div>
+
+      {/* Manual Next Task (left side) */}
+      <div className="hidden md:block fixed left-4 top-1/2 -translate-y-1/2 z-20">
+        <Button
+          variant="outline"
+          onClick={() => generateNextTask(true)}
+          disabled={generatingTask}
+          size="sm"
+        >
+          <ChevronRight className="w-4 h-4 mr-2" />
+          Next Task
+        </Button>
       </div>
 
       {/* Messages */}
