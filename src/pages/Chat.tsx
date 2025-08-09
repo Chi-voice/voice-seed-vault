@@ -304,43 +304,47 @@ const Chat = () => {
 
   const handleSubmitRecording = async (taskId: string, audioBlob: Blob, notes?: string) => {
     if (!user) return;
-    
+
     try {
-      // Check how many recordings already exist for this task by this user
-      const { count: existingCount, error: countError } = await supabase
-        .from('recordings')
-        .select('*', { count: 'exact', head: true })
-        .eq('user_id', user.id)
-        .eq('task_id', taskId);
-
-      if (countError) throw countError;
-      const isSecondRecording = (existingCount ?? 0) >= 1;
-
+      // Insert the new recording
       const fileName = `${user.id}/${taskId}_${Date.now()}.webm`;
       const audioUrl = `placeholder_${fileName}`;
-      
-      const { error } = await supabase
+
+      const { error: insertError } = await supabase
         .from('recordings')
         .insert({
           user_id: user.id,
           task_id: taskId,
           audio_url: audioUrl,
           notes: notes,
-          duration: 0
+          duration: 0,
         });
-      
-      if (error) throw error;
-      
+
+      if (insertError) throw insertError;
+
       toast({
         title: "Recording saved!",
         description: "Your translation has been saved successfully.",
       });
 
+      // Reload chat to immediately show the new recording
       await loadChatHistory();
+
+      // Check total recordings for this task by this user AFTER insert
+      const { count: totalCount, error: countAfterError } = await supabase
+        .from('recordings')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', user.id)
+        .eq('task_id', taskId);
+
+      if (countAfterError) {
+        console.warn('Failed to count recordings after insert', countAfterError);
+      }
+
       const updated = await loadProgress();
 
-      // Auto-generate next task after the second recording of the same task
-      if (isSecondRecording) {
+      // Auto-generate next task once there are two recordings for the same task
+      if ((totalCount ?? 0) >= 2) {
         await generateNextTask(true);
         await Promise.all([loadChatHistory(), loadProgress()]);
       } else if (updated?.can_generate_next) {
@@ -354,7 +358,7 @@ const Chat = () => {
         variant: "destructive",
       });
     }
-    
+
     setIsRecordingModalOpen(false);
     setCurrentTask(null);
   };
@@ -414,39 +418,24 @@ const Chat = () => {
             (message.recordingsCount ?? 0) < 2;
 
           return (
-            <React.Fragment key={message.id}>
-              <div
-                className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}
-              >
-                <Card className={`max-w-[80%] p-4 ${
-                  isUser 
-                    ? 'bg-earth-primary text-white' 
-                    : 'bg-card'
-                }`}>
+            <div key={message.id} className="space-y-2">
+              <div className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}>
+                <Card className={`max-w-[80%] p-4 ${isUser ? 'bg-earth-primary text-white' : 'bg-card'}`}>
                   <div className="space-y-2">
                     <div className="flex items-center space-x-2">
-                      <Badge variant="outline" className="text-xs">
-                        {message.taskType}
-                      </Badge>
-                      <Badge variant="outline" className="text-xs">
-                        {message.difficulty}
-                      </Badge>
+                      <Badge variant="outline" className="text-xs">{message.taskType}</Badge>
+                      <Badge variant="outline" className="text-xs">{message.difficulty}</Badge>
                       <div className="flex items-center space-x-1 text-xs text-muted-foreground">
                         <Clock className="w-3 h-3" />
                         <span>{message.estimatedTime}min</span>
                       </div>
                     </div>
-                    
+
                     <p className="text-sm">{message.content}</p>
-                    
+
                     {isUser && message.audioUrl && (
                       <div className="flex items-center justify-end">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => playAudio(message.audioUrl!)}
-                          className="p-1 h-8 w-8"
-                        >
+                        <Button variant="ghost" size="sm" onClick={() => playAudio(message.audioUrl!)} className="p-1 h-8 w-8">
                           {playingAudio === message.audioUrl ? (
                             <Pause className="w-4 h-4" />
                           ) : (
@@ -455,15 +444,9 @@ const Chat = () => {
                         </Button>
                       </div>
                     )}
-                    
-                    {message.type === 'system' && !messages.some(m => 
-                      m.type === 'user' && ((m.taskId && m.taskId === message.id) || m.id.startsWith(`${message.id}-recording`))
-                    ) && (
-                      <Button
-                        size="sm"
-                        onClick={() => handleStartRecording(message)}
-                        className="bg-earth-primary hover:bg-earth-primary/90"
-                      >
+
+                    {message.type === 'system' && !messages.some(m => m.type === 'user' && ((m.taskId && m.taskId === message.id) || m.id.startsWith(`${message.id}-recording`))) && (
+                      <Button size="sm" onClick={() => handleStartRecording(message)} className="bg-earth-primary hover:bg-earth-primary/90">
                         <Mic className="w-4 h-4 mr-2" />
                         Record
                       </Button>
@@ -489,7 +472,7 @@ const Chat = () => {
                   </Button>
                 </div>
               )}
-            </React.Fragment>
+            </div>
           );
         })}
         <div ref={messagesEndRef} />
