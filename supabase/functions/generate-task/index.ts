@@ -187,14 +187,35 @@ serve(async (req) => {
     const randomType = taskTypes[Math.floor(Math.random() * taskTypes.length)];
     const randomDifficulty = difficulties[Math.floor(Math.random() * difficulties.length)];
 
-    const prompt = `Generate a ${randomDifficulty} level English ${randomType} for indigenous language translation practice for ${language.name}. 
+    // Fetch recent tasks to avoid repetition
+    const { data: recentTasks } = await supabase
+      .from('tasks')
+      .select('english_text')
+      .eq('language_id', language.id)
+      .order('created_at', { ascending: false })
+      .limit(25);
+
+    const usedTexts = new Set((recentTasks ?? []).map((t: any) => (t.english_text ?? '').trim().toLowerCase()));
+    const usedWords = (recentTasks ?? [])
+      .map((t: any) => (t.english_text ?? '').trim())
+      .filter((txt: string) => txt && !txt.includes(' '))
+      .map((txt: string) => txt.toLowerCase());
+
+    const avoidList = Array.from(usedTexts).slice(0, 20);
+    const avoidWords = usedWords.slice(0, 20);
+
+    const avoidance = avoidList.length ? ` Avoid these already used items: ${avoidList.join(', ')}.` : '';
+    const avoidanceWords = (randomType === 'word' && avoidWords.length) ? ` Do not use any of these words: ${avoidWords.join(', ')}.` : '';
+
+    const prompt = `Generate a ${randomDifficulty} level English ${randomType} for indigenous language translation practice for ${language.name}.
     
-    Return ONLY a JSON object with these fields:
-    - english_text: the English text to translate
-    - description: a brief, helpful description of what this means or when it's used
-    - estimated_time: estimated minutes to record (1-5)
-    
-    Keep it culturally appropriate and useful for language preservation. For words, use common vocabulary. For phrases, use everyday expressions. For sentences, use practical statements.`;
+    Requirements:
+    - It must be NEW for this language (not previously used).
+    - Keep it culturally appropriate and useful for language preservation.
+    - For words, use common vocabulary. For phrases, use everyday expressions. For sentences, use practical statements.
+    - Return ONLY a JSON object with fields: english_text, description, estimated_time (1-5).
+    ${avoidance}${avoidanceWords}
+    Ensure english_text is not in the provided avoid lists and is concise.`
 
     console.log('Generating task with OpenAI for language:', language.name);
 
@@ -221,36 +242,45 @@ serve(async (req) => {
     if (!openAIResponse.ok) {
       console.error('OpenAI API error:', openAIResponse.status);
 
-      // Fallback: create a simple deterministic starter task without OpenAI
-      const fallbackMap = {
-        word: {
-          text: 'hello',
-          description: `Translate the common greeting "hello" into ${language.name}.`,
-          estimated: 1
-        },
-        phrase: {
-          text: 'How are you?',
-          description: `Translate this everyday phrase into ${language.name}.`,
-          estimated: 2
-        },
-        sentence: {
-          text: 'My name is ____.',
-          description: `Translate and say this simple self-introduction in ${language.name}.`,
-          estimated: 2
-        }
+      // Diversified fallback: choose an item not recently used
+      const fallbackPool = {
+        word: [
+          { text: 'water', description: `Translate the word "water" into ${language.name}.`, estimated: 1 },
+          { text: 'food', description: `Translate the word "food" into ${language.name}.`, estimated: 1 },
+          { text: 'family', description: `Translate the word "family" into ${language.name}.`, estimated: 1 },
+          { text: 'friend', description: `Translate the word "friend" into ${language.name}.`, estimated: 1 },
+          { text: 'rain', description: `Translate the word "rain" into ${language.name}.`, estimated: 1 },
+          { text: 'sun', description: `Translate the word "sun" into ${language.name}.`, estimated: 1 },
+          { text: 'moon', description: `Translate the word "moon" into ${language.name}.`, estimated: 1 },
+          { text: 'tree', description: `Translate the word "tree" into ${language.name}.`, estimated: 1 }
+        ],
+        phrase: [
+          { text: 'Good morning', description: `Translate this greeting into ${language.name}.`, estimated: 2 },
+          { text: 'Thank you', description: `Translate this expression of gratitude into ${language.name}.`, estimated: 2 },
+          { text: 'Where is the market?', description: `Translate this practical question into ${language.name}.`, estimated: 2 },
+          { text: 'Please help me', description: `Translate this request into ${language.name}.`, estimated: 2 },
+          { text: 'See you tomorrow', description: `Translate this farewell into ${language.name}.`, estimated: 2 }
+        ],
+        sentence: [
+          { text: 'I am going to the river today.', description: `Translate this everyday sentence into ${language.name}.`, estimated: 2 },
+          { text: 'We will meet at the school.', description: `Translate this plan into ${language.name}.`, estimated: 2 },
+          { text: 'The weather is very hot today.', description: `Translate this observation into ${language.name}.`, estimated: 2 },
+          { text: 'My house is near the forest.', description: `Translate this location sentence into ${language.name}.`, estimated: 2 }
+        ]
       } as const;
 
-      const f = fallbackMap[randomType as 'word' | 'phrase' | 'sentence'];
+      const pool = fallbackPool[randomType as 'word' | 'phrase' | 'sentence'];
+      const candidate = pool.find((p) => !usedTexts.has(p.text.toLowerCase())) ?? pool[Math.floor(Math.random() * pool.length)];
 
       const { data: newTask, error: taskError } = await supabase
         .from('tasks')
         .insert({
-          english_text: f.text,
-          description: f.description,
+          english_text: candidate.text,
+          description: candidate.description,
           type: randomType,
           difficulty: randomDifficulty,
           language_id: language.id,
-          estimated_time: f.estimated,
+          estimated_time: candidate.estimated,
           created_by_ai: false,
           is_starter_task: !taskCount || taskCount === 0
         })
@@ -354,7 +384,48 @@ serve(async (req) => {
       });
     }
 
-    // Create the task in database
+    // Ensure uniqueness; if AI output duplicates or missing, use diversified fallback
+    let createdByAi = true;
+    let aiEnglishText = (taskData?.english_text ?? '').trim();
+    if (!aiEnglishText || usedTexts.has(aiEnglishText.toLowerCase())) {
+      console.log('AI output missing/duplicate. Switching to diversified fallback.');
+      createdByAi = false;
+      const fallbackPool = {
+        word: [
+          { text: 'water', description: `Translate the word "water" into ${language.name}.`, estimated: 1 },
+          { text: 'food', description: `Translate the word "food" into ${language.name}.`, estimated: 1 },
+          { text: 'family', description: `Translate the word "family" into ${language.name}.`, estimated: 1 },
+          { text: 'friend', description: `Translate the word "friend" into ${language.name}.`, estimated: 1 },
+          { text: 'rain', description: `Translate the word "rain" into ${language.name}.`, estimated: 1 },
+          { text: 'sun', description: `Translate the word "sun" into ${language.name}.`, estimated: 1 },
+          { text: 'moon', description: `Translate the word "moon" into ${language.name}.`, estimated: 1 },
+          { text: 'tree', description: `Translate the word "tree" into ${language.name}.`, estimated: 1 }
+        ],
+        phrase: [
+          { text: 'Good morning', description: `Translate this greeting into ${language.name}.`, estimated: 2 },
+          { text: 'Thank you', description: `Translate this expression of gratitude into ${language.name}.`, estimated: 2 },
+          { text: 'Where is the market?', description: `Translate this practical question into ${language.name}.`, estimated: 2 },
+          { text: 'Please help me', description: `Translate this request into ${language.name}.`, estimated: 2 },
+          { text: 'See you tomorrow', description: `Translate this farewell into ${language.name}.`, estimated: 2 }
+        ],
+        sentence: [
+          { text: 'I am going to the river today.', description: `Translate this everyday sentence into ${language.name}.`, estimated: 2 },
+          { text: 'We will meet at the school.', description: `Translate this plan into ${language.name}.`, estimated: 2 },
+          { text: 'The weather is very hot today.', description: `Translate this observation into ${language.name}.`, estimated: 2 },
+          { text: 'My house is near the forest.', description: `Translate this location sentence into ${language.name}.`, estimated: 2 }
+        ]
+      } as const;
+      const pool = fallbackPool[randomType as 'word' | 'phrase' | 'sentence'];
+      const candidate = pool.find((p) => !usedTexts.has(p.text.toLowerCase())) ?? pool[Math.floor(Math.random() * pool.length)];
+      taskData = {
+        english_text: candidate.text,
+        description: candidate.description,
+        estimated_time: candidate.estimated
+      };
+    }
+
+    aiEnglishText = (taskData?.english_text ?? '').trim();
+
     const { data: newTask, error: taskError } = await supabase
       .from('tasks')
       .insert({
@@ -364,7 +435,7 @@ serve(async (req) => {
         difficulty: randomDifficulty,
         language_id: language.id, // Use the actual database language ID
         estimated_time: taskData.estimated_time || 2,
-        created_by_ai: true
+        created_by_ai: createdByAi
       })
       .select()
       .single();
