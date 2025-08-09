@@ -264,7 +264,8 @@ const Chat = () => {
       const { data, error } = await supabase.functions.invoke('generate-task', {
         body: {
           language_id: language.id, // Use the actual database language ID
-          user_id: user.id
+          user_id: user.id,
+          force
         }
       });
 

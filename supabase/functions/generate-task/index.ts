@@ -14,7 +14,7 @@ serve(async (req) => {
   }
 
   try {
-    const { language_id, user_id } = await req.json();
+    const { language_id, user_id, force } = await req.json();
 
     // Create Supabase client
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
@@ -84,22 +84,26 @@ serve(async (req) => {
       console.log('No tasks found for language, creating starter task');
       // Continue to task generation without checking progress
     } else {
-      // Check if user can generate next task (has completed 2 recordings)
-      const { data: progress } = await supabase
-        .from('user_task_progress')
-        .select('can_generate_next, recordings_count')
-        .eq('user_id', user_id)
-        .eq('language_id', languageDbId)
-        .single();
+      // Check if user can generate next task (has completed 2 recordings) unless forced
+      if (!force) {
+        const { data: progress } = await supabase
+          .from('user_task_progress')
+          .select('can_generate_next, recordings_count')
+          .eq('user_id', user_id)
+          .eq('language_id', languageDbId)
+          .single();
 
-      if (!progress || !progress.can_generate_next) {
-        return new Response(JSON.stringify({ 
-          error: 'You need to complete 2 recordings before generating next task',
-          recordings_needed: 2 - (progress?.recordings_count || 0)
-        }), {
-          status: 400,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
+        if (!progress || !progress.can_generate_next) {
+          return new Response(JSON.stringify({ 
+            error: 'You need to complete 2 recordings before generating next task',
+            recordings_needed: 2 - (progress?.recordings_count || 0)
+          }), {
+            status: 400,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+      } else {
+        console.log('Force-generating next task for user', user_id, 'language', languageDbId);
       }
     }
 
