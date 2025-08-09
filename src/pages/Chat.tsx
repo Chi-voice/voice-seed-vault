@@ -322,34 +322,65 @@ const Chat = () => {
 
       if (insertError) throw insertError;
 
-      toast({
-        title: "Recording saved!",
-        description: "Your translation has been saved successfully.",
+      // Optimistically add the new recording to the chat UI
+      const sysMessage = messages.find((m) => m.type === 'system' && m.id === taskId);
+      const existingUserRecordings = messages.filter(
+        (m) => m.type === 'user' && ((m.taskId && m.taskId === taskId) || m.id.startsWith(`${taskId}-recording`))
+      );
+      const nextIndex = existingUserRecordings.length + 1;
+
+      const optimisticMessage: Message = {
+        id: `${taskId}-recording-${nextIndex}`,
+        type: 'user',
+        content: `Recorded: "${sysMessage?.content ?? ''}"`,
+        taskType: (sysMessage?.taskType as Message['taskType']) ?? 'sentence',
+        difficulty: (sysMessage?.difficulty as Message['difficulty']) ?? 'beginner',
+        estimatedTime: sysMessage?.estimatedTime ?? 2,
+        audioUrl,
+        isCompleted: true,
+        timestamp: new Date(),
+        taskId,
+        recordingIndex: nextIndex,
+        recordingsCount: nextIndex,
+      };
+
+      setMessages((prev) => {
+        // Update previous recordings of the same task to reflect the new total count
+        const updatedPrev = prev.map((m) => {
+          const isSameTaskUserRecording =
+            m.type === 'user' && ((m.taskId && m.taskId === taskId) || m.id.startsWith(`${taskId}-recording`));
+          return isSameTaskUserRecording ? { ...m, recordingsCount: nextIndex } : m;
+        });
+        return [...updatedPrev, optimisticMessage];
       });
 
-      // Reload chat to immediately show the new recording
-      await loadChatHistory();
+      toast({
+        title: 'Recording saved!',
+        description: 'Your translation has been saved successfully.',
+      });
 
-      // Check total recordings for this task by this user AFTER insert
-      const { count: totalCount, error: countAfterError } = await supabase
-        .from('recordings')
-        .select('*', { count: 'exact', head: true })
-        .eq('user_id', user.id)
-        .eq('task_id', taskId);
+      // Reconcile with server in the background and decide on next task
+      const [{ count: totalCount, error: countAfterError }, updated] = await Promise.all([
+        supabase
+          .from('recordings')
+          .select('*', { count: 'exact', head: true })
+          .eq('user_id', user.id)
+          .eq('task_id', taskId),
+        loadProgress(),
+      ]);
 
       if (countAfterError) {
         console.warn('Failed to count recordings after insert', countAfterError);
       }
 
-      const updated = await loadProgress();
+      const recordingsTotal = totalCount ?? nextIndex;
 
-      // Auto-generate next task once there are two recordings for the same task
-      if ((totalCount ?? 0) >= 2) {
+      if (recordingsTotal >= 2 || updated?.can_generate_next) {
         await generateNextTask(true);
         await Promise.all([loadChatHistory(), loadProgress()]);
-      } else if (updated?.can_generate_next) {
-        await generateNextTask(true);
-        await Promise.all([loadChatHistory(), loadProgress()]);
+      } else {
+        // Just refresh chat to include server timestamps/order
+        loadChatHistory();
       }
     } catch (error: any) {
       toast({
