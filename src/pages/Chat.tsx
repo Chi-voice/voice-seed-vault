@@ -27,6 +27,10 @@ interface Message {
   audioUrl?: string;
   isCompleted?: boolean;
   timestamp: Date;
+  // Added metadata to support multi-recording UI/logic
+  taskId?: string;
+  recordingIndex?: number; // 1-based index of this recording for the task
+  recordingsCount?: number; // total user recordings for this task
 }
 
 interface Language {
@@ -205,24 +209,31 @@ const Chat = () => {
           taskType: task.type as 'word' | 'phrase' | 'sentence',
           difficulty: task.difficulty as 'beginner' | 'intermediate' | 'advanced',
           estimatedTime: task.estimated_time,
-          timestamp: new Date(task.created_at)
+          timestamp: new Date(task.created_at),
+          taskId: task.id,
         });
 
-        // Add user recording if exists
-        const userRecording = task.recordings?.find((r: any) => r.user_id === user.id);
-        if (userRecording) {
+        // Add all user recordings (in order)
+        const userRecordings = (task.recordings || [])
+          .filter((r: any) => r.user_id === user.id)
+          .sort((a: any, b: any) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+
+        userRecordings.forEach((r: any, idx: number) => {
           chatMessages.push({
-            id: `${task.id}-recording`,
+            id: `${task.id}-recording-${idx + 1}`,
             type: 'user',
             content: `Recorded: "${task.english_text}"`,
             taskType: task.type as 'word' | 'phrase' | 'sentence',
             difficulty: task.difficulty as 'beginner' | 'intermediate' | 'advanced',
             estimatedTime: task.estimated_time,
-            audioUrl: userRecording.audio_url,
+            audioUrl: r.audio_url,
             isCompleted: true,
-            timestamp: new Date(userRecording.created_at)
+            timestamp: new Date(r.created_at),
+            taskId: task.id,
+            recordingIndex: idx + 1,
+            recordingsCount: userRecordings.length,
           });
-        }
+        });
       });
 
       setMessages(chatMessages);
@@ -295,6 +306,16 @@ const Chat = () => {
     if (!user) return;
     
     try {
+      // Check how many recordings already exist for this task by this user
+      const { count: existingCount, error: countError } = await supabase
+        .from('recordings')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', user.id)
+        .eq('task_id', taskId);
+
+      if (countError) throw countError;
+      const isSecondRecording = (existingCount ?? 0) >= 1;
+
       const fileName = `${user.id}/${taskId}_${Date.now()}.webm`;
       const audioUrl = `placeholder_${fileName}`;
       
@@ -314,12 +335,17 @@ const Chat = () => {
         title: "Recording saved!",
         description: "Your translation has been saved successfully.",
       });
-      
+
+      await loadChatHistory();
       const updated = await loadProgress();
-      if (updated?.can_generate_next) {
+
+      // Auto-generate next task after the second recording of the same task
+      if (isSecondRecording) {
         await generateNextTask(true);
-        await loadChatHistory();
-        await loadProgress();
+        await Promise.all([loadChatHistory(), loadProgress()]);
+      } else if (updated?.can_generate_next) {
+        await generateNextTask(true);
+        await Promise.all([loadChatHistory(), loadProgress()]);
       }
     } catch (error: any) {
       toast({
@@ -344,11 +370,13 @@ const Chat = () => {
 
   const getNextIncompleteTask = () => {
     for (let i = 0; i < messages.length; i++) {
-      const message = messages[i];
-      if (message.type === 'system') {
-        const nextMessage = messages[i + 1];
-        if (!nextMessage || nextMessage.type !== 'user') {
-          return message;
+      const msg = messages[i];
+      if (msg.type === 'system') {
+        const hasAnyUserRecording = messages.some(
+          (m) => m.type === 'user' && ((m.taskId && m.taskId === msg.id) || m.id.startsWith(`${msg.id}-recording`))
+        );
+        if (!hasAnyUserRecording) {
+          return msg;
         }
       }
     }
@@ -378,79 +406,92 @@ const Chat = () => {
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
-        {messages.map((message) => (
-          <div
-            key={message.id}
-            className={`flex ${message.type === 'user' ? 'justify-end' : 'justify-start'}`}
-          >
-            <Card className={`max-w-[80%] p-4 ${
-              message.type === 'user' 
-                ? 'bg-earth-primary text-white' 
-                : 'bg-card'
-            }`}>
-              <div className="space-y-2">
-                <div className="flex items-center space-x-2">
-                  <Badge variant="outline" className="text-xs">
-                    {message.taskType}
-                  </Badge>
-                  <Badge variant="outline" className="text-xs">
-                    {message.difficulty}
-                  </Badge>
-                  <div className="flex items-center space-x-1 text-xs text-muted-foreground">
-                    <Clock className="w-3 h-3" />
-                    <span>{message.estimatedTime}min</span>
-                  </div>
-                </div>
-                
-                <p className="text-sm">{message.content}</p>
-                
-                {message.type === 'user' && message.audioUrl && (
-                  <div className="flex flex-col items-end gap-2">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => playAudio(message.audioUrl!)}
-                      className="p-1 h-8 w-8"
-                    >
-                      {playingAudio === message.audioUrl ? (
-                        <Pause className="w-4 h-4" />
-                      ) : (
-                        <Play className="w-4 h-4" />
-                      )}
-                    </Button>
-                    {progress && !progress.can_generate_next && (
+        {messages.map((message) => {
+          const isUser = message.type === 'user';
+          const showRecordAgainAfterThis =
+            isUser &&
+            (message.recordingIndex ?? 0) === (message.recordingsCount ?? 0) &&
+            (message.recordingsCount ?? 0) < 2;
+
+          return (
+            <React.Fragment key={message.id}>
+              <div
+                className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}
+              >
+                <Card className={`max-w-[80%] p-4 ${
+                  isUser 
+                    ? 'bg-earth-primary text-white' 
+                    : 'bg-card'
+                }`}>
+                  <div className="space-y-2">
+                    <div className="flex items-center space-x-2">
+                      <Badge variant="outline" className="text-xs">
+                        {message.taskType}
+                      </Badge>
+                      <Badge variant="outline" className="text-xs">
+                        {message.difficulty}
+                      </Badge>
+                      <div className="flex items-center space-x-1 text-xs text-muted-foreground">
+                        <Clock className="w-3 h-3" />
+                        <span>{message.estimatedTime}min</span>
+                      </div>
+                    </div>
+                    
+                    <p className="text-sm">{message.content}</p>
+                    
+                    {isUser && message.audioUrl && (
+                      <div className="flex items-center justify-end">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => playAudio(message.audioUrl!)}
+                          className="p-1 h-8 w-8"
+                        >
+                          {playingAudio === message.audioUrl ? (
+                            <Pause className="w-4 h-4" />
+                          ) : (
+                            <Play className="w-4 h-4" />
+                          )}
+                        </Button>
+                      </div>
+                    )}
+                    
+                    {message.type === 'system' && !messages.some(m => 
+                      m.type === 'user' && ((m.taskId && m.taskId === message.id) || m.id.startsWith(`${message.id}-recording`))
+                    ) && (
                       <Button
                         size="sm"
-                        onClick={() => {
-                          const baseId = message.id.replace('-recording', '');
-                          const sysMessage = messages.find(m => m.id === baseId && m.type === 'system');
-                          if (sysMessage) handleStartRecording(sysMessage);
-                        }}
+                        onClick={() => handleStartRecording(message)}
                         className="bg-earth-primary hover:bg-earth-primary/90"
                       >
                         <Mic className="w-4 h-4 mr-2" />
-                        Record Again
+                        Record
                       </Button>
                     )}
                   </div>
-                )}
-                
-                {message.type === 'system' && !messages.find(m => 
-                  m.id === `${message.id}-recording` && m.type === 'user'
-                ) && (
+                </Card>
+              </div>
+
+              {showRecordAgainAfterThis && (
+                <div className="flex justify-end">
                   <Button
                     size="sm"
-                    onClick={() => handleStartRecording(message)}
+                    onClick={() => {
+                      const sysMessage = messages.find(
+                        (m) => m.type === 'system' && m.id === (message.taskId ?? message.id.split('-recording')[0])
+                      );
+                      if (sysMessage) handleStartRecording(sysMessage);
+                    }}
                     className="bg-earth-primary hover:bg-earth-primary/90"
                   >
                     <Mic className="w-4 h-4 mr-2" />
-                    Record
+                    Record Again
                   </Button>
-                )}
-              </div>
-            </Card>
-          </div>
-        ))}
+                </div>
+              )}
+            </React.Fragment>
+          );
+        })}
         <div ref={messagesEndRef} />
       </div>
 
