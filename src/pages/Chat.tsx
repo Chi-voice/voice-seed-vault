@@ -349,6 +349,8 @@ const Chat = () => {
   };
 
   const nextIncompleteTask = getNextIncompleteTask();
+  const lastSystemTask: Message | null =
+    [...messages].reverse().find((m) => m.type === 'system') || null;
 
   return (
     <div className="flex flex-col h-screen bg-background">
@@ -412,8 +414,9 @@ const Chat = () => {
                   </Button>
                 )}
                 
-                {message.type === 'system' && !messages.find(m => 
-                  m.id === `${message.id}-recording` && m.type === 'user'
+                {message.type === 'system' && (
+                  (!messages.find(m => m.id === `${message.id}-recording` && m.type === 'user')) ||
+                  (progress && !progress.can_generate_next)
                 ) && (
                   <Button
                     size="sm"
@@ -421,7 +424,7 @@ const Chat = () => {
                     className="bg-earth-primary hover:bg-earth-primary/90"
                   >
                     <Mic className="w-4 h-4 mr-2" />
-                    Record
+                    {messages.find(m => m.id === `${message.id}-recording` && m.type === 'user') ? 'Record Again' : 'Record'}
                   </Button>
                 )}
               </div>
@@ -441,6 +444,15 @@ const Chat = () => {
           >
             <Mic className="w-5 h-5 mr-2" />
             Record Current Task
+          </Button>
+        ) : (progress && !progress.can_generate_next && lastSystemTask) ? (
+          <Button
+            onClick={() => handleStartRecording(lastSystemTask)}
+            className="w-full bg-earth-primary hover:bg-earth-primary/90"
+            size="lg"
+          >
+            <Mic className="w-5 h-5 mr-2" />
+            Record Again
           </Button>
         ) : (
           <Button
