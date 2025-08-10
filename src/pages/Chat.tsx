@@ -51,6 +51,7 @@ const Chat = () => {
   const [playingAudio, setPlayingAudio] = useState<string | null>(null);
   const [progress, setProgress] = useState<{ recordings_count: number; can_generate_next: boolean } | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -307,10 +308,38 @@ const Chat = () => {
     if (!user) return;
 
     try {
-      // Insert the new recording
-      const fileName = `${user.id}/${taskId}_${Date.now()}.webm`;
-      const audioUrl = `placeholder_${fileName}`;
+      // Helper to compute duration from blob
+      const getAudioDuration = (blob: Blob) =>
+        new Promise<number>((resolve) => {
+          const url = URL.createObjectURL(blob);
+          const audio = new Audio(url);
+          const cleanup = () => URL.revokeObjectURL(url);
+          audio.addEventListener('loadedmetadata', () => {
+            const sec = Math.round(audio.duration || 0);
+            cleanup();
+            resolve(Number.isFinite(sec) ? sec : 0);
+          });
+          audio.addEventListener('error', () => {
+            cleanup();
+            resolve(0);
+          });
+        });
 
+      // 1) Upload the blob to Storage with a user-scoped path
+      const filePath = `${user.id}/${taskId}/${Date.now()}.webm`;
+      const { error: uploadError } = await supabase.storage
+        .from('recordings')
+        .upload(filePath, audioBlob, { contentType: 'audio/webm' });
+      if (uploadError) throw uploadError;
+
+      // 2) Get a public URL
+      const { data: pub } = supabase.storage.from('recordings').getPublicUrl(filePath);
+      const audioUrl = pub?.publicUrl || '';
+
+      // 3) Calculate duration
+      const duration = await getAudioDuration(audioBlob);
+
+      // 4) Insert the new recording with the real URL and duration
       const { error: insertError } = await supabase
         .from('recordings')
         .insert({
@@ -318,12 +347,11 @@ const Chat = () => {
           task_id: taskId,
           audio_url: audioUrl,
           notes: notes,
-          duration: 0,
+          duration,
         });
-
       if (insertError) throw insertError;
 
-      // Optimistically add the new recording to the chat UI
+      // 5) Optimistically add the new recording to the chat UI
       const sysMessage = messages.find((m) => m.type === 'system' && m.id === taskId);
       const existingIndexes = messages
         .filter((m) => m.type === 'user' && m.id.startsWith(`${taskId}-recording-`))
@@ -349,7 +377,6 @@ const Chat = () => {
       };
 
       setMessages((prev) => {
-        // Update previous recordings of the same task to reflect the new total count
         const updatedPrev = prev.map((m) => {
           const isSameTaskUserRecording =
             m.type === 'user' && ((m.taskId && m.taskId === taskId) || m.id.startsWith(`${taskId}-recording`));
@@ -363,7 +390,7 @@ const Chat = () => {
         description: 'Your translation has been saved successfully.',
       });
 
-      // Reconcile with server in the background and decide on next task
+      // 6) Reconcile with server in the background and decide on next task
       const [{ count: totalCount, error: countAfterError }, updated] = await Promise.all([
         supabase
           .from('recordings')
@@ -383,7 +410,6 @@ const Chat = () => {
         await generateNextTask(true);
         await Promise.all([loadChatHistory(), loadProgress()]);
       } else {
-        // Defer refresh briefly to avoid overwriting optimistic UI before DB read is ready
         setTimeout(() => {
           loadChatHistory();
           loadProgress();
@@ -391,9 +417,9 @@ const Chat = () => {
       }
     } catch (error: any) {
       toast({
-        title: "Error saving recording",
+        title: 'Error saving recording',
         description: error.message,
-        variant: "destructive",
+        variant: 'destructive',
       });
     }
 
@@ -402,11 +428,38 @@ const Chat = () => {
   };
 
   const playAudio = (audioUrl: string) => {
-    if (playingAudio === audioUrl) {
-      setPlayingAudio(null);
-    } else {
+    try {
+      // Toggle pause if same URL is playing
+      if (playingAudio === audioUrl) {
+        audioRef.current?.pause();
+        audioRef.current = null;
+        setPlayingAudio(null);
+        return;
+      }
+
+      // Stop any existing playback
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current = null;
+      }
+
+      const audio = new Audio(audioUrl);
+      audioRef.current = audio;
       setPlayingAudio(audioUrl);
-      // Implement audio playback logic here
+
+      audio.onended = () => setPlayingAudio(null);
+      audio.onerror = () => {
+        setPlayingAudio(null);
+        toast({ title: 'Playback error', description: 'Unable to play this audio.' });
+      };
+
+      audio.play().catch(() => {
+        setPlayingAudio(null);
+        toast({ title: 'Playback error', description: 'Autoplay prevented, tap to try again.' });
+      });
+    } catch (e: any) {
+      setPlayingAudio(null);
+      toast({ title: 'Playback error', description: e.message });
     }
   };
 
