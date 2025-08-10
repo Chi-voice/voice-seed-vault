@@ -105,7 +105,6 @@ const Auth = () => {
           <p className="text-sm text-muted-foreground">
             {t('auth.subtitle')}
           </p>
-          </p>
         </CardHeader>
         <CardContent>
           <Tabs value={activeTab} onValueChange={setActiveTab}>

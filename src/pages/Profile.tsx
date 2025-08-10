@@ -179,7 +179,6 @@ const Profile = () => {
                 <p className="text-muted-foreground mb-2">
                   {t('profile.memberSince')} {profile?.created_at ? new Date(profile.created_at).toLocaleDateString() : t('profile.recently')}
                 </p>
-                </p>
                 <div className="flex items-center space-x-2">
                   <Badge className={`${getLevelColor(stats?.currentLevel || 'Beginner')} text-white`}>
                     {stats?.currentLevel}
