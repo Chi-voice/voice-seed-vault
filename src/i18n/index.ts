@@ -17,15 +17,33 @@ const resources = {
   ar: { translation: ar },
 };
 
+const saved = typeof window !== 'undefined' ? localStorage.getItem('lang') : null;
+const browser = typeof navigator !== 'undefined' ? navigator.language.split('-')[0] : 'en';
+const initialLng = (saved || browser || 'en') as keyof typeof resources;
+
 i18n
   .use(initReactI18next)
   .init({
     resources,
-    lng: 'en',
+    lng: initialLng,
     fallbackLng: 'en',
     interpolation: {
       escapeValue: false,
     },
   });
+
+// Persist language and set document attributes
+if (typeof window !== 'undefined') {
+  const applyDir = (lng: string) => {
+    const isRTL = lng === 'ar';
+    document.documentElement.lang = lng;
+    document.documentElement.dir = isRTL ? 'rtl' : 'ltr';
+  };
+  applyDir(i18n.language);
+  i18n.on('languageChanged', (lng) => {
+    try { localStorage.setItem('lang', lng); } catch {}
+    applyDir(lng);
+  });
+}
 
 export default i18n;

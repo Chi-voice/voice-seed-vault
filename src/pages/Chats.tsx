@@ -14,6 +14,7 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import type { User } from '@supabase/supabase-js';
+import { useTranslation } from 'react-i18next';
 
 interface ActiveChat {
   language_id: string;
@@ -30,7 +31,8 @@ const Chats = () => {
   const [activeChats, setActiveChats] = useState<ActiveChat[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(true);
-  const { toast } = useToast();
+const { toast } = useToast();
+const { t } = useTranslation();
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
@@ -108,7 +110,7 @@ const Chats = () => {
       setActiveChats(Array.from(chatMap.values()));
     } catch (error: any) {
       toast({
-        title: "Error loading chats",
+        title: t('chats.errors.loadTitle'),
         description: error.message,
         variant: "destructive",
       });
@@ -129,11 +131,11 @@ const Chats = () => {
     const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
     
     if (diffDays === 0) {
-      return 'Today';
+      return t('common.today');
     } else if (diffDays === 1) {
-      return 'Yesterday';
+      return t('common.yesterday');
     } else if (diffDays < 7) {
-      return `${diffDays} days ago`;
+      return t('common.daysAgo', { count: diffDays });
     } else {
       return date.toLocaleDateString();
     }
@@ -144,7 +146,7 @@ const Chats = () => {
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
           <MessageCircle className="w-12 h-12 text-earth-primary mx-auto mb-4 animate-pulse" />
-          <p className="text-lg text-muted-foreground">Loading your chats...</p>
+          <p className="text-lg text-muted-foreground">{t('chats.loading')}</p>
         </div>
       </div>
     );
@@ -155,21 +157,21 @@ const Chats = () => {
       <div className="container mx-auto px-4 py-6">
         {/* Header */}
         <div className="mb-6">
-          <h1 className="text-3xl font-bold text-foreground mb-2">Active Chats</h1>
+          <h1 className="text-3xl font-bold text-foreground mb-2">{t('chats.title')}</h1>
           <p className="text-muted-foreground">
-            Continue your language recording sessions
+            {t('chats.subtitle')}
           </p>
         </div>
 
         {/* Search */}
         <div className="relative mb-6">
-          <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search your active chats..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-9"
-          />
+  <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+  <Input
+    placeholder={t('chats.searchPlaceholder')}
+    value={searchTerm}
+    onChange={(e) => setSearchTerm(e.target.value)}
+    className="pl-9"
+  />
         </div>
 
         {/* New Chat Button */}
@@ -178,8 +180,8 @@ const Chats = () => {
           className="w-full mb-6 bg-earth-primary hover:bg-earth-primary/90"
           size="lg"
         >
-          <Plus className="w-5 h-5 mr-2" />
-          Start New Language Chat
+  <Plus className="w-5 h-5 mr-2" />
+  {t('chats.startNew')}
         </Button>
 
         {/* Active Chats */}

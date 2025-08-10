@@ -11,6 +11,7 @@ import Profile from "./pages/Profile";
 import BottomNavigation from "./components/BottomNavigation";
 import NotFound from "./pages/NotFound";
 import { useReferral } from "./hooks/useReferral";
+import GlobalHeader from "./components/GlobalHeader";
 
 const queryClient = new QueryClient();
 
@@ -25,6 +26,7 @@ const App = () => {
         <Toaster />
         <Sonner />
         <div className="min-h-screen pb-16">
+          <GlobalHeader />
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/auth" element={<Auth />} />

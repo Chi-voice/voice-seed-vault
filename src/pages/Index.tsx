@@ -5,8 +5,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { ThemeToggle } from '@/components/ThemeToggle';
-import LanguageSelector from '@/components/LanguageSelector';
 import { 
   Mic, 
   Users, 
@@ -170,11 +168,6 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-earth-warm via-background to-earth-warm/50 pb-20">
-      {/* Header with Controls */}
-      <div className="absolute top-4 right-4 flex items-center space-x-4 z-10">
-        <LanguageSelector />
-        <ThemeToggle />
-      </div>
 
       {/* Hero Section */}
       <div className="relative overflow-hidden">

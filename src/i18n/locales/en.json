@@ -35,5 +35,20 @@
     "light": "Light",
     "dark": "Dark",
     "system": "System"
+  },
+  "common": {
+    "today": "Today",
+    "yesterday": "Yesterday",
+    "daysAgo": "{{count}} days ago"
+  },
+  "chats": {
+    "title": "Active Chats",
+    "subtitle": "Continue your language recording sessions",
+    "loading": "Loading your chats...",
+    "searchPlaceholder": "Search your active chats...",
+    "startNew": "Start New Language Chat",
+    "errors": {
+      "loadTitle": "Error loading chats"
+    }
   }
 }
