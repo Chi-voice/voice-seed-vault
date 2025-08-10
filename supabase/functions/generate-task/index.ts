@@ -193,7 +193,7 @@ serve(async (req) => {
       .select('english_text')
       .eq('language_id', language.id)
       .order('created_at', { ascending: false })
-      .limit(25);
+      .limit(200);
 
     const usedTexts = new Set((recentTasks ?? []).map((t: any) => (t.english_text ?? '').trim().toLowerCase()));
     const usedWords = (recentTasks ?? [])
@@ -206,6 +206,83 @@ serve(async (req) => {
 
     const avoidance = avoidList.length ? ` Avoid these already used items: ${avoidList.join(', ')}.` : '';
     const avoidanceWords = (randomType === 'word' && avoidWords.length) ? ` Do not use any of these words: ${avoidWords.join(', ')}.` : '';
+
+    // Helpers to detect near-duplicates and generate diversified fallbacks
+    const tokenize = (s: string) => s.toLowerCase().replace(/[^a-z0-9\s]/g, '').split(/\s+/).filter(Boolean);
+    const jaccard = (a: string, b: string) => {
+      const A = new Set(tokenize(a));
+      const B = new Set(tokenize(b));
+      const inter = [...A].filter(x => B.has(x)).length;
+      const uni = new Set([...A, ...B]).size;
+      return uni ? inter / uni : 0;
+    };
+    const isTooSimilar = (candidate: string) => {
+      const cand = candidate.trim().toLowerCase();
+      if (usedTexts.has(cand)) return true;
+      for (const t of usedTexts) {
+        if (jaccard(candidate, t) >= 0.8) return true;
+      }
+      return false;
+    };
+
+    const makeFallbackCandidate = (type: 'word' | 'phrase' | 'sentence') => {
+      const words = ['water','food','family','friend','rain','sun','moon','tree','house','fire','river','mountain','child','mother','father','road','bird','fish','earth','sky','wind','song','dance','story','market','teacher','school','village','forest','medicine'];
+      const items = ['water','medicine','food','salt','cloth','oil','firewood','fish','rice','maize'];
+      const places = ['river','market','school','farm','village','forest','house','mountain'];
+      const times = ['today','tomorrow','this morning','this evening','next week'];
+      const verbs = ['fetch','cook','buy','sell','visit','teach','learn','carry','repair','plant'];
+      const objects = ['water','food','tools','clothes','basket','boat','house','fence'];
+      let candidate = { text: '', description: '', estimated: 2 } as { text: string; description: string; estimated: number };
+
+      if (type === 'word') {
+        const filtered = words.filter(w => !usedWords.includes(w));
+        const pool = filtered.length ? filtered : words;
+        candidate.text = pool[Math.floor(Math.random() * pool.length)];
+        candidate.description = `Translate the word "${candidate.text}" into ${language.name}.`;
+        candidate.estimated = 1;
+      } else if (type === 'phrase') {
+        const phraseTemplates = [
+          (it: string) => `I need ${it}`,
+          (it: string) => `Where can I buy ${it}?`,
+          (pl: string) => `Let's go to the ${pl}`,
+          (it: string) => `Do you have ${it}?`,
+          (pl: string) => `I'm at the ${pl}`
+        ];
+        const it = items[Math.floor(Math.random() * items.length)];
+        const pl = places[Math.floor(Math.random() * places.length)];
+        const templatesAny = phraseTemplates as ((x: string) => string)[];
+        const text = Math.random() < 0.5 ? templatesAny[0](it) : (Math.random() < 0.5 ? templatesAny[1](it) : (Math.random() < 0.5 ? templatesAny[2](pl) : (Math.random() < 0.5 ? templatesAny[3](it) : templatesAny[4](pl))));
+        candidate.text = text;
+        candidate.description = `Translate this everyday expression into ${language.name}.`;
+        candidate.estimated = 2;
+      } else {
+        const sentenceTemplates = [
+          (pl: string, tm: string) => `I am going to the ${pl} ${tm}.`,
+          (vb: string, ob: string) => `We will ${vb} the ${ob} tomorrow.`,
+          (pl: string) => `My house is near the ${pl}.`,
+          (vb: string, ob: string) => `She can ${vb} the ${ob}.`,
+          (pl: string) => `The road to the ${pl} is long.`
+        ];
+        const tm = times[Math.floor(Math.random() * times.length)];
+        const pl = places[Math.floor(Math.random() * places.length)];
+        const vb = verbs[Math.floor(Math.random() * verbs.length)];
+        const ob = objects[Math.floor(Math.random() * objects.length)];
+        const idx = Math.floor(Math.random() * sentenceTemplates.length);
+        const text = idx === 0 ? sentenceTemplates[0](pl, tm) : idx === 1 ? sentenceTemplates[1](vb, ob) : idx === 2 ? sentenceTemplates[2](pl) : idx === 3 ? sentenceTemplates[3](vb, ob) : sentenceTemplates[4](pl);
+        candidate.text = text;
+        candidate.description = `Translate this practical sentence into ${language.name}.`;
+        candidate.estimated = 2;
+      }
+      return candidate;
+    };
+
+    const pickUniqueFallback = (type: 'word' | 'phrase' | 'sentence', maxTries = 12) => {
+      for (let i = 0; i < maxTries; i++) {
+        const c = makeFallbackCandidate(type);
+        if (!isTooSimilar(c.text)) return c;
+      }
+      return makeFallbackCandidate('word');
+    };
 
     const prompt = `Generate a ${randomDifficulty} level English ${randomType} for indigenous language translation practice for ${language.name}.
     
@@ -242,35 +319,8 @@ serve(async (req) => {
     if (!openAIResponse.ok) {
       console.error('OpenAI API error:', openAIResponse.status);
 
-      // Diversified fallback: choose an item not recently used
-      const fallbackPool = {
-        word: [
-          { text: 'water', description: `Translate the word "water" into ${language.name}.`, estimated: 1 },
-          { text: 'food', description: `Translate the word "food" into ${language.name}.`, estimated: 1 },
-          { text: 'family', description: `Translate the word "family" into ${language.name}.`, estimated: 1 },
-          { text: 'friend', description: `Translate the word "friend" into ${language.name}.`, estimated: 1 },
-          { text: 'rain', description: `Translate the word "rain" into ${language.name}.`, estimated: 1 },
-          { text: 'sun', description: `Translate the word "sun" into ${language.name}.`, estimated: 1 },
-          { text: 'moon', description: `Translate the word "moon" into ${language.name}.`, estimated: 1 },
-          { text: 'tree', description: `Translate the word "tree" into ${language.name}.`, estimated: 1 }
-        ],
-        phrase: [
-          { text: 'Good morning', description: `Translate this greeting into ${language.name}.`, estimated: 2 },
-          { text: 'Thank you', description: `Translate this expression of gratitude into ${language.name}.`, estimated: 2 },
-          { text: 'Where is the market?', description: `Translate this practical question into ${language.name}.`, estimated: 2 },
-          { text: 'Please help me', description: `Translate this request into ${language.name}.`, estimated: 2 },
-          { text: 'See you tomorrow', description: `Translate this farewell into ${language.name}.`, estimated: 2 }
-        ],
-        sentence: [
-          { text: 'I am going to the river today.', description: `Translate this everyday sentence into ${language.name}.`, estimated: 2 },
-          { text: 'We will meet at the school.', description: `Translate this plan into ${language.name}.`, estimated: 2 },
-          { text: 'The weather is very hot today.', description: `Translate this observation into ${language.name}.`, estimated: 2 },
-          { text: 'My house is near the forest.', description: `Translate this location sentence into ${language.name}.`, estimated: 2 }
-        ]
-      } as const;
-
-      const pool = fallbackPool[randomType as 'word' | 'phrase' | 'sentence'];
-      const candidate = pool.find((p) => !usedTexts.has(p.text.toLowerCase())) ?? pool[Math.floor(Math.random() * pool.length)];
+      // Diversified fallback: generator with deduping against recent tasks
+      const candidate = pickUniqueFallback(randomType as 'word' | 'phrase' | 'sentence');
 
       const { data: newTask, error: taskError } = await supabase
         .from('tasks')
@@ -323,26 +373,8 @@ serve(async (req) => {
     } catch (e) {
       console.error('Failed to parse OpenAI response:', e);
 
-      // Fallback: create a simple deterministic task if AI output is invalid
-      const fallbackMap = {
-        word: {
-          text: 'hello',
-          description: `Translate the common greeting "hello" into ${language.name}.`,
-          estimated: 1
-        },
-        phrase: {
-          text: 'How are you?',
-          description: `Translate this everyday phrase into ${language.name}.`,
-          estimated: 2
-        },
-        sentence: {
-          text: 'My name is ____.',
-          description: `Translate and say this simple self-introduction in ${language.name}.`,
-          estimated: 2
-        }
-      } as const;
-
-      const f = fallbackMap[randomType as 'word' | 'phrase' | 'sentence'];
+      // Fallback: generate a diversified candidate with deduping
+      const f = pickUniqueFallback(randomType as 'word' | 'phrase' | 'sentence');
 
       const { data: newTask, error: taskError } = await supabase
         .from('tasks')
@@ -390,33 +422,7 @@ serve(async (req) => {
     if (!aiEnglishText || usedTexts.has(aiEnglishText.toLowerCase())) {
       console.log('AI output missing/duplicate. Switching to diversified fallback.');
       createdByAi = false;
-      const fallbackPool = {
-        word: [
-          { text: 'water', description: `Translate the word "water" into ${language.name}.`, estimated: 1 },
-          { text: 'food', description: `Translate the word "food" into ${language.name}.`, estimated: 1 },
-          { text: 'family', description: `Translate the word "family" into ${language.name}.`, estimated: 1 },
-          { text: 'friend', description: `Translate the word "friend" into ${language.name}.`, estimated: 1 },
-          { text: 'rain', description: `Translate the word "rain" into ${language.name}.`, estimated: 1 },
-          { text: 'sun', description: `Translate the word "sun" into ${language.name}.`, estimated: 1 },
-          { text: 'moon', description: `Translate the word "moon" into ${language.name}.`, estimated: 1 },
-          { text: 'tree', description: `Translate the word "tree" into ${language.name}.`, estimated: 1 }
-        ],
-        phrase: [
-          { text: 'Good morning', description: `Translate this greeting into ${language.name}.`, estimated: 2 },
-          { text: 'Thank you', description: `Translate this expression of gratitude into ${language.name}.`, estimated: 2 },
-          { text: 'Where is the market?', description: `Translate this practical question into ${language.name}.`, estimated: 2 },
-          { text: 'Please help me', description: `Translate this request into ${language.name}.`, estimated: 2 },
-          { text: 'See you tomorrow', description: `Translate this farewell into ${language.name}.`, estimated: 2 }
-        ],
-        sentence: [
-          { text: 'I am going to the river today.', description: `Translate this everyday sentence into ${language.name}.`, estimated: 2 },
-          { text: 'We will meet at the school.', description: `Translate this plan into ${language.name}.`, estimated: 2 },
-          { text: 'The weather is very hot today.', description: `Translate this observation into ${language.name}.`, estimated: 2 },
-          { text: 'My house is near the forest.', description: `Translate this location sentence into ${language.name}.`, estimated: 2 }
-        ]
-      } as const;
-      const pool = fallbackPool[randomType as 'word' | 'phrase' | 'sentence'];
-      const candidate = pool.find((p) => !usedTexts.has(p.text.toLowerCase())) ?? pool[Math.floor(Math.random() * pool.length)];
+      const candidate = pickUniqueFallback(randomType as 'word' | 'phrase' | 'sentence');
       taskData = {
         english_text: candidate.text,
         description: candidate.description,

@@ -82,7 +82,6 @@ const Chat = () => {
       generateNextTask();
     }
   }, [messages, language, user, progress]);
-
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
