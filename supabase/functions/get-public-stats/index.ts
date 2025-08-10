@@ -20,7 +20,7 @@ serve(async (req) => {
     const [rec, langs, contrib] = await Promise.all([
       supabase.from("recordings").select("*", { count: "exact", head: true }),
       supabase.from("languages").select("*", { count: "exact", head: true }),
-      supabase.from("profiles").select("*", { count: "exact", head: true }).gt("total_recordings", 0),
+      supabase.from("profiles").select("*", { count: "exact", head: true }),
     ]);
 
     if (rec.error || langs.error || contrib.error) {
