@@ -115,6 +115,30 @@ export type Database = {
           },
         ]
       }
+      referrals: {
+        Row: {
+          created_at: string
+          id: string
+          points_awarded: boolean
+          referred_user_id: string
+          referrer_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          points_awarded?: boolean
+          referred_user_id: string
+          referrer_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          points_awarded?: boolean
+          referred_user_id?: string
+          referrer_id?: string
+        }
+        Relationships: []
+      }
       tasks: {
         Row: {
           created_at: string

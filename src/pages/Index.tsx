@@ -43,6 +43,11 @@ const Index = () => {
   const { toast } = useToast();
   const { t } = useTranslation();
 
+  // Live stats
+  const [recordingsCount, setRecordingsCount] = useState(0);
+  const [languagesCount, setLanguagesCount] = useState(0);
+  const [contributorsCount, setContributorsCount] = useState(0);
+
   // Set up auth state listener
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
@@ -92,13 +97,44 @@ const Index = () => {
     }
   };
 
+  // Load live counts and subscribe to realtime updates
+  const fetchCounts = async () => {
+    try {
+      const [rec, langs, contrib] = await Promise.all([
+        supabase.from('recordings').select('*', { count: 'exact', head: true }),
+        supabase.from('languages').select('*', { count: 'exact', head: true }),
+        supabase.from('profiles').select('*', { count: 'exact', head: true }).gt('total_recordings', 0),
+      ]);
+      if (!rec.error && typeof rec.count === 'number') setRecordingsCount(rec.count);
+      if (!langs.error && typeof langs.count === 'number') setLanguagesCount(langs.count);
+      if (!contrib.error && typeof contrib.count === 'number') setContributorsCount(contrib.count);
+    } catch (e) {
+      console.error('Error fetching counts', e);
+    }
+  };
+
+  useEffect(() => {
+    if (!user) return;
+    fetchCounts();
+
+    const channel = supabase
+      .channel('realtime-stats')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'recordings' }, fetchCounts)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'languages' }, fetchCounts)
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'profiles' }, fetchCounts)
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user]);
+
   const startLanguageChat = async (languageId: string) => {
     if (!user) return;
 
     // Navigate directly to chat page - let the chat page handle task generation
     navigate(`/chat/${languageId}`);
   };
-
   // Filter languages based on search - combine DB languages with Glottolog
   const glottologFormatted = glottologLanguages.map(lang => ({
     ...lang,
@@ -282,15 +318,15 @@ const Index = () => {
             </p>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-2xl mx-auto">
               <div>
-                <div className="text-3xl font-bold">1,200+</div>
+                <div className="text-3xl font-bold">{recordingsCount.toLocaleString()}</div>
                 <div className="opacity-80">{t('home.recordings')}</div>
               </div>
               <div>
-                <div className="text-3xl font-bold">45</div>
+                <div className="text-3xl font-bold">{languagesCount.toLocaleString()}</div>
                 <div className="opacity-80">{t('home.languages')}</div>
               </div>
               <div>
-                <div className="text-3xl font-bold">300+</div>
+                <div className="text-3xl font-bold">{contributorsCount.toLocaleString()}</div>
                 <div className="opacity-80">{t('home.contributors')}</div>
               </div>
             </div>

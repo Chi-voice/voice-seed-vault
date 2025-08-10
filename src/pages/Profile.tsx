@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
@@ -13,7 +14,8 @@ import {
   Edit2,
   Award,
   Clock,
-  Target
+  Target,
+  Copy
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
@@ -142,6 +144,8 @@ const Profile = () => {
     }
   };
 
+  const referralLink = `${window.location.origin}/?ref=${user?.id || ''}`;
+
   if (loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -224,6 +228,31 @@ const Profile = () => {
             </CardContent>
           </Card>
         </div>
+
+        {/* Referral */}
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle className="flex items-center justify-between">
+              <span>Invite friends (50 points each)</span>
+              <Badge>Referral</Badge>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center gap-2">
+              <Input readOnly value={referralLink} className="flex-1" />
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  navigator.clipboard.writeText(referralLink);
+                  toast({ title: 'Copied referral link' });
+                }}
+              >
+                <Copy className="w-4 h-4 mr-2" /> Copy
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Achievements */}
         <Card className="mb-6">
