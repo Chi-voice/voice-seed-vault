@@ -95,38 +95,34 @@ const Index = () => {
     }
   };
 
-  // Load live counts and subscribe to realtime updates
+  // Load live counts via public edge function
   const fetchCounts = async () => {
     try {
-      // TODO: Replace with secure RPC for global stats (awaiting approval)
-      const [rec, langs, contrib] = await Promise.all([
-        supabase.from('recordings').select('*', { count: 'exact', head: true }),
-        supabase.from('languages').select('*', { count: 'exact', head: true }),
-        supabase.from('profiles').select('*', { count: 'exact', head: true }).gt('total_recordings', 0),
-      ]);
-      if (!rec.error && typeof rec.count === 'number') setRecordingsCount(rec.count);
-      if (!langs.error && typeof langs.count === 'number') setLanguagesCount(langs.count);
-      if (!contrib.error && typeof contrib.count === 'number') setContributorsCount(contrib.count);
+      const { data, error } = await supabase.functions.invoke('get-public-stats');
+      if (error) throw error;
+      if (data) {
+        setRecordingsCount(data.total_recordings ?? 0);
+        setLanguagesCount(data.total_languages ?? 0);
+        setContributorsCount(data.total_contributors ?? 0);
+      }
     } catch (e) {
       console.error('Error fetching counts', e);
     }
   };
 
   useEffect(() => {
-    if (!user) return;
-    fetchCounts();
-
-    const channel = supabase
-      .channel('realtime-stats')
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'recordings' }, fetchCounts)
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'languages' }, fetchCounts)
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'profiles' }, fetchCounts)
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
+    let isMounted = true;
+    const poll = async () => {
+      if (!isMounted) return;
+      await fetchCounts();
     };
-  }, [user]);
+    poll();
+    const id = setInterval(poll, 15000);
+    return () => {
+      isMounted = false;
+      clearInterval(id);
+    };
+  }, []);
 
   const startLanguageChat = async (languageId: string) => {
     if (!user) return;

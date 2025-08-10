@@ -50,6 +50,10 @@
     "loading": "Loading your chats...",
     "searchPlaceholder": "Search your active chats...",
     "startNew": "Start New Language Chat",
+    "emptyTitle": "No active chats",
+    "emptyDesc": "Start your first language recording session to see it here.",
+    "startRecordingBtn": "Start Recording",
+    "progressSummary": "{{completed}} of {{total}} tasks completed",
     "errors": {
       "loadTitle": "Error loading chats"
     }

@@ -207,7 +207,7 @@ const { t } = useTranslation();
                       <div className="flex items-center space-x-1">
                         <Mic className="w-4 h-4 text-earth-primary" />
                         <span className="text-sm font-medium">
-                          {chat.completed_recordings} recordings
+                          {chat.completed_recordings} {t('home.recordings')}
                         </span>
                       </div>
                       <div className="flex items-center space-x-1 text-muted-foreground">
@@ -229,7 +229,7 @@ const { t } = useTranslation();
                     />
                   </div>
                   <p className="text-xs text-muted-foreground mt-1">
-                    {chat.completed_recordings} of {chat.total_tasks} tasks completed
+                    {t('chats.progressSummary', { completed: chat.completed_recordings, total: chat.total_tasks })}
                   </p>
                 </CardContent>
               </Card>
@@ -239,16 +239,16 @@ const { t } = useTranslation();
           <Card className="text-center py-12">
             <CardContent>
               <MessageCircle className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
-              <h3 className="text-xl font-semibold mb-2">No active chats</h3>
+              <h3 className="text-xl font-semibold mb-2">{t('chats.emptyTitle')}</h3>
               <p className="text-muted-foreground mb-6">
-                Start your first language recording session to see it here.
+                {t('chats.emptyDesc')}
               </p>
               <Button
                 onClick={() => navigate('/')}
                 className="bg-earth-primary hover:bg-earth-primary/90"
               >
                 <Plus className="w-4 h-4 mr-2" />
-                Start Recording
+                {t('chats.startRecordingBtn')}
               </Button>
             </CardContent>
           </Card>

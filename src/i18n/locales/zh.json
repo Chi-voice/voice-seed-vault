@@ -50,6 +50,10 @@
     "loading": "正在加载你的聊天...",
     "searchPlaceholder": "搜索你的进行中聊天...",
     "startNew": "开始新的语言聊天",
+    "emptyTitle": "暂无进行中的聊天",
+    "emptyDesc": "开始你的首次语言录音会话后将显示在此处。",
+    "startRecordingBtn": "开始录音",
+    "progressSummary": "{{completed}} / {{total}} 个任务已完成",
     "errors": {
       "loadTitle": "加载聊天出错"
     }
