@@ -22,7 +22,10 @@
     "recordings": "Recordings",
     "languages": "Languages",
     "contributors": "Contributors",
-    "tasksAvailable": "tasks available"
+    "tasksAvailable": "tasks available",
+    "popular": "Popular",
+    "globalLabel": "Global",
+    "unknown": "Unknown"
   },
   "navigation": {
     "home": "Home",
@@ -50,5 +53,109 @@
     "errors": {
       "loadTitle": "Error loading chats"
     }
+  },
+  "auth": {
+    "title": "Join the Language Preservation Movement",
+    "subtitle": "Help preserve indigenous languages for future generations",
+    "signin": "Sign In",
+    "signup": "Sign Up",
+    "email": "Email",
+    "password": "Password",
+    "emailPlaceholder": "your.email@example.com",
+    "signingIn": "Signing in...",
+    "createAccount": "Create Account",
+    "creatingAccount": "Creating account...",
+    "orContinue": "Or continue with",
+    "continueWithGoogle": "Continue with Google",
+    "termsNote": "By signing up, you agree to help preserve indigenous languages and contribute to our global cultural heritage database.",
+    "checkEmailTitle": "Check your email",
+    "checkEmailDesc": "We've sent you a confirmation link to complete your registration.",
+    "welcomeBackTitle": "Welcome back!",
+    "welcomeBackDesc": "You've been signed in successfully.",
+    "errorTitle": "Authentication Error"
+  },
+  "chat": {
+    "header": {
+      "recordingsCompleted": "{{count}} recordings completed"
+    },
+    "toasts": {
+      "needMoreTitle": "Complete more recordings",
+      "needMoreDesc": "Please complete at least 2 recordings to unlock the next task.",
+      "taskGenTitle": "Task Generation",
+      "newTaskTitle": "New task generated!",
+      "newTaskDesc": "Ready for your next recording.",
+      "errorLoadLangTitle": "Error loading language",
+      "errorGenTitle": "Error generating task",
+      "errorSaveTitle": "Error saving recording",
+      "saveSuccessTitle": "Recording saved!",
+      "saveSuccessDesc": "Your translation has been saved successfully."
+    },
+    "playback": {
+      "error": "Playback error",
+      "cannotPlay": "Unable to play this audio.",
+      "autoplayPrevented": "Autoplay prevented, tap to try again."
+    }
+  },
+  "task": {
+    "translation": "Translation",
+    "englishText": "English Text:",
+    "approxMinutes": "~{{minutes}} min",
+    "id": "ID",
+    "completed": "Completed ✓",
+    "startRecording": "Start Recording"
+  },
+  "modal": {
+    "title": "Record Translation",
+    "description": "Record your translation of the English text into your indigenous language",
+    "englishTextLabel": "English Text to Translate:",
+    "instructionsTitle": "Recording Instructions:",
+    "instructions": {
+      "speakClearly": "• Speak clearly and at a natural pace",
+      "quietEnv": "• Record in a quiet environment",
+      "accurate": "• Provide an accurate translation in your indigenous language",
+      "rerecord": "• You can re-record if needed before submitting"
+    },
+    "yourRecording": "Your Recording:",
+    "notesLabel": "Additional Notes (Optional)",
+    "cancel": "Cancel",
+    "submit": "Submit Recording",
+    "submitting": "Submitting...",
+    "noRecordingTitle": "No recording found",
+    "noRecordingDesc": "Please record your translation before submitting.",
+    "submitSuccessTitle": "Recording submitted!",
+    "submitSuccessDesc": "Thank you for your contribution to preserving indigenous languages.",
+    "submitErrorTitle": "Submission failed",
+    "submitErrorDesc": "There was an error submitting your recording. Please try again."
+  },
+  "recorder": {
+    "recordingInProgress": "Recording in progress...",
+    "recordingComplete": "Recording complete! Play to review or record again.",
+    "tapToStart": "Tap the microphone to start recording"
+  },
+  "profile": {
+    "loading": "Loading profile...",
+    "memberSince": "Member since",
+    "points": "points",
+    "recordings": "Recordings",
+    "languages": "Languages",
+    "minutes": "Minutes",
+    "dayStreak": "Day Streak",
+    "inviteTitle": "Invite friends (50 points each)",
+    "referral": "Referral",
+    "copied": "Copied referral link",
+    "copy": "Copy",
+    "achievements": "Achievements",
+    "firstRecording": "First Recording",
+    "firstRecordingDesc": "Complete your first task",
+    "polyglot": "Polyglot",
+    "polyglotDesc": "Record in 5 languages",
+    "voiceActor": "Voice Actor",
+    "voiceActorDesc": "Complete 100 recordings",
+    "dedicated": "Dedicated",
+    "dedicatedDesc": "7-day recording streak",
+    "viewActiveChats": "View Active Chats",
+    "signOut": "Sign Out",
+    "user": "User",
+    "recently": "Recently"
   }
 }

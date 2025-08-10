@@ -4,6 +4,7 @@ import { Progress } from '@/components/ui/progress';
 import { Card, CardContent } from '@/components/ui/card';
 import { Mic, MicOff, Play, Pause, RotateCcw } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useTranslation } from 'react-i18next';
 
 interface AudioRecorderProps {
   onRecordingComplete: (audioBlob: Blob) => void;
@@ -16,6 +17,7 @@ export const AudioRecorder: React.FC<AudioRecorderProps> = ({
   maxDuration = 30,
   className
 }) => {
+  const { t } = useTranslation();
   const [isRecording, setIsRecording] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const [recordingTime, setRecordingTime] = useState(0);
@@ -229,10 +231,10 @@ export const AudioRecorder: React.FC<AudioRecorderProps> = ({
         {/* Status Text */}
         <div className="text-center text-sm text-muted-foreground">
           {isRecording 
-            ? "Recording in progress..." 
+            ? t('recorder.recordingInProgress') 
             : audioBlob 
-            ? "Recording complete! Play to review or record again." 
-            : "Tap the microphone to start recording"
+            ? t('recorder.recordingComplete') 
+            : t('recorder.tapToStart')
           }
         </div>
       </CardContent>

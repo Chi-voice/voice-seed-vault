@@ -16,6 +16,7 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import type { User } from '@supabase/supabase-js';
+import { useTranslation } from 'react-i18next';
 
 interface Message {
   id: string;
@@ -53,6 +54,7 @@ const Chat = () => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const { toast } = useToast();
+  const { t } = useTranslation();
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
@@ -156,7 +158,7 @@ const Chat = () => {
       setLanguage(data);
     } catch (error: any) {
       toast({
-        title: 'Error loading language',
+        title: t('chat.toasts.errorLoadLangTitle'),
         description: error.message,
         variant: 'destructive',
       });
@@ -252,8 +254,8 @@ const Chat = () => {
     // Guard: require sufficient progress before generating next task (allow first task)
     if (!force && messages.length > 0 && (!progress || !progress.can_generate_next)) {
       toast({
-        title: 'Complete more recordings',
-        description: 'Please complete at least 2 recordings to unlock the next task.',
+        title: t('chat.toasts.needMoreTitle'),
+        description: t('chat.toasts.needMoreDesc'),
         variant: 'destructive',
       });
       return;
@@ -273,7 +275,7 @@ const Chat = () => {
 
       if (data.error) {
         toast({
-          title: "Task Generation",
+          title: t('chat.toasts.taskGenTitle'),
           description: data.error,
           variant: "destructive",
         });
@@ -284,12 +286,12 @@ const Chat = () => {
       loadChatHistory();
       
       toast({
-        title: "New task generated!",
-        description: "Ready for your next recording.",
+        title: t('chat.toasts.newTaskTitle'),
+        description: t('chat.toasts.newTaskDesc'),
       });
     } catch (error: any) {
       toast({
-        title: "Error generating task",
+        title: t('chat.toasts.errorGenTitle'),
         description: error.message,
         variant: "destructive",
       });
@@ -385,8 +387,8 @@ const Chat = () => {
       });
 
       toast({
-        title: 'Recording saved!',
-        description: 'Your translation has been saved successfully.',
+        title: t('chat.toasts.saveSuccessTitle'),
+        description: t('chat.toasts.saveSuccessDesc'),
       });
 
       // 6) Reconcile with server in the background and decide on next task
@@ -416,7 +418,7 @@ const Chat = () => {
       }
     } catch (error: any) {
       toast({
-        title: 'Error saving recording',
+        title: t('chat.toasts.errorSaveTitle'),
         description: error.message,
         variant: 'destructive',
       });
@@ -449,16 +451,16 @@ const Chat = () => {
       audio.onended = () => setPlayingAudio(null);
       audio.onerror = () => {
         setPlayingAudio(null);
-        toast({ title: 'Playback error', description: 'Unable to play this audio.' });
+        toast({ title: t('chat.playback.error'), description: t('chat.playback.cannotPlay') });
       };
 
       audio.play().catch(() => {
         setPlayingAudio(null);
-        toast({ title: 'Playback error', description: 'Autoplay prevented, tap to try again.' });
+        toast({ title: t('chat.playback.error'), description: t('chat.playback.autoplayPrevented') });
       });
     } catch (e: any) {
       setPlayingAudio(null);
-      toast({ title: 'Playback error', description: e.message });
+      toast({ title: t('chat.playback.error'), description: e.message });
     }
   };
 
@@ -493,7 +495,7 @@ const Chat = () => {
         <div className="flex-1">
           <h1 className="font-semibold text-lg">{language?.name}</h1>
           <p className="text-sm text-muted-foreground">
-            {messages.filter(m => m.type === 'user').length} recordings completed
+            {t('chat.header.recordingsCompleted', { count: messages.filter(m => m.type === 'user').length })}
           </p>
         </div>
       </div>

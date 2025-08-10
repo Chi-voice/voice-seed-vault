@@ -13,6 +13,7 @@ import { AudioRecorder } from './AudioRecorder';
 import { Task } from './TaskCard';
 import { Volume2, Save, X } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useTranslation } from 'react-i18next';
 
 interface RecordingModalProps {
   isOpen: boolean;
@@ -31,6 +32,7 @@ export const RecordingModal: React.FC<RecordingModalProps> = ({
   const [notes, setNotes] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
+  const { t } = useTranslation();
 
   if (!task) return null;
 
@@ -41,8 +43,8 @@ export const RecordingModal: React.FC<RecordingModalProps> = ({
   const handleSubmit = async () => {
     if (!audioBlob) {
       toast({
-        title: "No recording found",
-        description: "Please record your translation before submitting.",
+        title: t('modal.noRecordingTitle'),
+        description: t('modal.noRecordingDesc'),
         variant: "destructive",
       });
       return;
@@ -52,8 +54,8 @@ export const RecordingModal: React.FC<RecordingModalProps> = ({
     try {
       await onSubmit(task.id, audioBlob, notes);
       toast({
-        title: "Recording submitted!",
-        description: "Thank you for your contribution to preserving indigenous languages.",
+        title: t('modal.submitSuccessTitle'),
+        description: t('modal.submitSuccessDesc'),
       });
       onClose();
       setAudioBlob(null);
@@ -61,7 +63,7 @@ export const RecordingModal: React.FC<RecordingModalProps> = ({
     } catch (error) {
       toast({
         title: "Submission failed",
-        description: "There was an error submitting your recording. Please try again.",
+        description: t('modal.submitErrorDesc'),
         variant: "destructive",
       });
     } finally {
@@ -82,10 +84,10 @@ export const RecordingModal: React.FC<RecordingModalProps> = ({
           <div className="flex items-center justify-between">
             <div>
               <DialogTitle className="text-xl font-bold text-foreground">
-                Record Translation
+                {t('modal.title')}
               </DialogTitle>
               <DialogDescription>
-                Record your translation of the English text into your indigenous language
+                {t('modal.description')}
               </DialogDescription>
             </div>
             <Button 
@@ -115,7 +117,7 @@ export const RecordingModal: React.FC<RecordingModalProps> = ({
               <div className="flex items-center space-x-2">
                 <Volume2 className="w-4 h-4 text-earth-primary" />
                 <span className="text-sm font-medium text-earth-deep">
-                  English Text to Translate:
+                  {t('modal.englishTextLabel')}
                 </span>
               </div>
               <p className="text-lg font-semibold text-foreground bg-white p-3 rounded border-l-4 border-earth-primary">
@@ -132,18 +134,18 @@ export const RecordingModal: React.FC<RecordingModalProps> = ({
 
           {/* Instructions */}
           <div className="bg-blue-50 p-4 rounded-lg border-l-4 border-blue-400">
-            <h4 className="font-semibold text-blue-800 mb-2">Recording Instructions:</h4>
+            <h4 className="font-semibold text-blue-800 mb-2">{t('modal.instructionsTitle')}</h4>
             <ul className="text-sm text-blue-700 space-y-1">
-              <li>• Speak clearly and at a natural pace</li>
-              <li>• Record in a quiet environment</li>
-              <li>• Provide an accurate translation in your indigenous language</li>
-              <li>• You can re-record if needed before submitting</li>
+              <li>{t('modal.instructions.speakClearly')}</li>
+              <li>{t('modal.instructions.quietEnv')}</li>
+              <li>{t('modal.instructions.accurate')}</li>
+              <li>{t('modal.instructions.rerecord')}</li>
             </ul>
           </div>
 
           {/* Audio Recorder */}
           <div className="space-y-4">
-            <h4 className="font-semibold text-foreground">Your Recording:</h4>
+            <h4 className="font-semibold text-foreground">{t('modal.yourRecording')}</h4>
             <AudioRecorder 
               onRecordingComplete={handleRecordingComplete}
               maxDuration={60}
@@ -153,7 +155,7 @@ export const RecordingModal: React.FC<RecordingModalProps> = ({
           {/* Optional Notes */}
           <div className="space-y-2">
             <label className="text-sm font-medium text-foreground">
-              Additional Notes (Optional)
+              {t('modal.notesLabel')}
             </label>
             <Textarea
               placeholder="Add any context, pronunciation notes, or cultural information about your translation..."
@@ -166,7 +168,7 @@ export const RecordingModal: React.FC<RecordingModalProps> = ({
           {/* Submit Button */}
           <div className="flex justify-end space-x-3 pt-4 border-t">
             <Button variant="outline" onClick={handleClose}>
-              Cancel
+              {t('modal.cancel')}
             </Button>
             <Button 
               onClick={handleSubmit}
@@ -174,7 +176,7 @@ export const RecordingModal: React.FC<RecordingModalProps> = ({
               className="bg-earth-primary hover:bg-earth-primary/90"
             >
               <Save className="w-4 h-4 mr-2" />
-              {isSubmitting ? 'Submitting...' : 'Submit Recording'}
+              {isSubmitting ? t('modal.submitting') : t('modal.submit')}
             </Button>
           </div>
         </div>

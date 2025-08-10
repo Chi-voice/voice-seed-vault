@@ -4,6 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Volume2, Clock, CheckCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useTranslation } from 'react-i18next';
 
 export interface Task {
   id: string;
@@ -36,6 +37,7 @@ const difficultyColors = {
 };
 
 export const TaskCard: React.FC<TaskCardProps> = ({ task, onStart, className }) => {
+  const { t } = useTranslation();
   const typeIcon = {
     word: '📝',
     phrase: '💬', 
@@ -54,7 +56,7 @@ export const TaskCard: React.FC<TaskCardProps> = ({ task, onStart, className }) 
             <span className="text-2xl">{typeIcon[task.type]}</span>
             <div>
               <CardTitle className="text-lg font-semibold text-foreground">
-                {task.type.charAt(0).toUpperCase() + task.type.slice(1)} Translation
+                {task.type.charAt(0).toUpperCase() + task.type.slice(1)} {t('task.translation')}
               </CardTitle>
               <div className="flex items-center space-x-2 mt-1">
                 <Badge className={typeColors[task.type]} variant="secondary">
@@ -77,7 +79,7 @@ export const TaskCard: React.FC<TaskCardProps> = ({ task, onStart, className }) 
         <div className="bg-earth-warm p-4 rounded-lg border-l-4 border-earth-primary">
           <div className="flex items-center space-x-2 mb-2">
             <Volume2 className="w-4 h-4 text-earth-primary" />
-            <span className="text-sm font-medium text-earth-deep">English Text:</span>
+            <span className="text-sm font-medium text-earth-deep">{t('task.englishText')}</span>
           </div>
           <p className="text-foreground font-medium text-lg">"{task.englishText}"</p>
         </div>
@@ -91,9 +93,9 @@ export const TaskCard: React.FC<TaskCardProps> = ({ task, onStart, className }) 
         <div className="flex items-center justify-between text-sm text-muted-foreground">
           <div className="flex items-center space-x-1">
             <Clock className="w-4 h-4" />
-            <span>~{task.estimatedTime} min</span>
+            <span>{t('task.approxMinutes', { minutes: task.estimatedTime })}</span>
           </div>
-          <span className="text-xs opacity-70">ID: {task.id.slice(0, 8)}</span>
+          <span className="text-xs opacity-70">{t('task.id')}: {task.id.slice(0, 8)}</span>
         </div>
 
         {/* Action Button */}

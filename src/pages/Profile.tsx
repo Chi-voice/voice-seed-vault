@@ -20,6 +20,7 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import type { User as SupabaseUser } from '@supabase/supabase-js';
+import { useTranslation } from 'react-i18next';
 
 interface UserProfile {
   id: string;
@@ -44,6 +45,7 @@ const Profile = () => {
   const [stats, setStats] = useState<UserStats | null>(null);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
+  const { t } = useTranslation();
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
@@ -75,7 +77,7 @@ const Profile = () => {
       setProfile(data);
     } catch (error: any) {
       toast({
-        title: "Error loading profile",
+        title: t('profile.loading'),
         description: error.message,
         variant: "destructive",
       });
@@ -151,7 +153,7 @@ const Profile = () => {
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
           <User className="w-12 h-12 text-earth-primary mx-auto mb-4 animate-pulse" />
-          <p className="text-lg text-muted-foreground">Loading profile...</p>
+          <p className="text-lg text-muted-foreground">{t('profile.loading')}</p>
         </div>
       </div>
     );
@@ -172,10 +174,11 @@ const Profile = () => {
               </Avatar>
               <div className="flex-1">
                 <h1 className="text-2xl font-bold">
-                  {profile?.display_name || 'User'}
+                  {profile?.display_name || t('profile.user')}
                 </h1>
                 <p className="text-muted-foreground mb-2">
-                  Member since {profile?.created_at ? new Date(profile.created_at).toLocaleDateString() : 'Recently'}
+                  {t('profile.memberSince')} {profile?.created_at ? new Date(profile.created_at).toLocaleDateString() : t('profile.recently')}
+                </p>
                 </p>
                 <div className="flex items-center space-x-2">
                   <Badge className={`${getLevelColor(stats?.currentLevel || 'Beginner')} text-white`}>
@@ -183,7 +186,7 @@ const Profile = () => {
                   </Badge>
                   <div className="flex items-center space-x-1 text-sm text-muted-foreground">
                     <Trophy className="w-4 h-4" />
-                    <span>{profile?.points || 0} points</span>
+                  <span>{profile?.points || 0} {t('profile.points')}</span>
                   </div>
                 </div>
               </div>
@@ -200,7 +203,7 @@ const Profile = () => {
             <CardContent className="pt-6 text-center">
               <Mic className="w-8 h-8 text-earth-primary mx-auto mb-2" />
               <div className="text-2xl font-bold">{profile?.total_recordings || 0}</div>
-              <div className="text-sm text-muted-foreground">Recordings</div>
+              <div className="text-sm text-muted-foreground">{t('profile.recordings')}</div>
             </CardContent>
           </Card>
 
@@ -208,7 +211,7 @@ const Profile = () => {
             <CardContent className="pt-6 text-center">
               <Languages className="w-8 h-8 text-earth-primary mx-auto mb-2" />
               <div className="text-2xl font-bold">{stats?.totalLanguages || 0}</div>
-              <div className="text-sm text-muted-foreground">Languages</div>
+              <div className="text-sm text-muted-foreground">{t('profile.languages')}</div>
             </CardContent>
           </Card>
 
@@ -216,7 +219,7 @@ const Profile = () => {
             <CardContent className="pt-6 text-center">
               <Clock className="w-8 h-8 text-earth-primary mx-auto mb-2" />
               <div className="text-2xl font-bold">{stats?.totalMinutes || 0}</div>
-              <div className="text-sm text-muted-foreground">Minutes</div>
+              <div className="text-sm text-muted-foreground">{t('profile.minutes')}</div>
             </CardContent>
           </Card>
 
@@ -224,7 +227,7 @@ const Profile = () => {
             <CardContent className="pt-6 text-center">
               <Target className="w-8 h-8 text-earth-primary mx-auto mb-2" />
               <div className="text-2xl font-bold">{stats?.longestStreak || 0}</div>
-              <div className="text-sm text-muted-foreground">Day Streak</div>
+              <div className="text-sm text-muted-foreground">{t('profile.dayStreak')}</div>
             </CardContent>
           </Card>
         </div>
@@ -233,8 +236,8 @@ const Profile = () => {
         <Card className="mb-6">
           <CardHeader>
             <CardTitle className="flex items-center justify-between">
-              <span>Invite friends (50 points each)</span>
-              <Badge>Referral</Badge>
+              <span>{t('profile.inviteTitle')}</span>
+              <Badge>{t('profile.referral')}</Badge>
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -248,7 +251,7 @@ const Profile = () => {
                   toast({ title: 'Copied referral link' });
                 }}
               >
-                <Copy className="w-4 h-4 mr-2" /> Copy
+                <Copy className="w-4 h-4 mr-2" /> {t('profile.copy')}
               </Button>
             </div>
           </CardContent>
@@ -259,7 +262,7 @@ const Profile = () => {
           <CardHeader>
             <CardTitle className="flex items-center space-x-2">
               <Award className="w-5 h-5" />
-              <span>Achievements</span>
+              <span>{t('profile.achievements')}</span>
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -267,32 +270,32 @@ const Profile = () => {
               <div className="flex items-center space-x-2 p-2 bg-muted rounded">
                 <Trophy className="w-5 h-5 text-yellow-500" />
                 <div>
-                  <div className="font-medium text-sm">First Recording</div>
-                  <div className="text-xs text-muted-foreground">Complete your first task</div>
+                  <div className="font-medium text-sm">{t('profile.firstRecording')}</div>
+                  <div className="text-xs text-muted-foreground">{t('profile.firstRecordingDesc')}</div>
                 </div>
               </div>
 
               <div className="flex items-center space-x-2 p-2 bg-muted rounded opacity-50">
                 <Languages className="w-5 h-5 text-gray-400" />
                 <div>
-                  <div className="font-medium text-sm">Polyglot</div>
-                  <div className="text-xs text-muted-foreground">Record in 5 languages</div>
+                  <div className="font-medium text-sm">{t('profile.polyglot')}</div>
+                  <div className="text-xs text-muted-foreground">{t('profile.polyglotDesc')}</div>
                 </div>
               </div>
 
               <div className="flex items-center space-x-2 p-2 bg-muted rounded opacity-50">
                 <Mic className="w-5 h-5 text-gray-400" />
                 <div>
-                  <div className="font-medium text-sm">Voice Actor</div>
-                  <div className="text-xs text-muted-foreground">Complete 100 recordings</div>
+                  <div className="font-medium text-sm">{t('profile.voiceActor')}</div>
+                  <div className="text-xs text-muted-foreground">{t('profile.voiceActorDesc')}</div>
                 </div>
               </div>
 
               <div className="flex items-center space-x-2 p-2 bg-muted rounded opacity-50">
                 <Clock className="w-5 h-5 text-gray-400" />
                 <div>
-                  <div className="font-medium text-sm">Dedicated</div>
-                  <div className="text-xs text-muted-foreground">7-day recording streak</div>
+                  <div className="font-medium text-sm">{t('profile.dedicated')}</div>
+                  <div className="text-xs text-muted-foreground">{t('profile.dedicatedDesc')}</div>
                 </div>
               </div>
             </div>
@@ -307,7 +310,7 @@ const Profile = () => {
             onClick={() => navigate('/chats')}
           >
             <Languages className="w-4 h-4 mr-3" />
-            View Active Chats
+            {t('profile.viewActiveChats')}
           </Button>
 
           <Button
@@ -316,7 +319,7 @@ const Profile = () => {
             onClick={handleSignOut}
           >
             <LogOut className="w-4 h-4 mr-3" />
-            Sign Out
+            {t('profile.signOut')}
           </Button>
         </div>
       </div>

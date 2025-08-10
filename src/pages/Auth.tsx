@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { Mic, Chrome } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 const Auth = () => {
   const [email, setEmail] = useState('');
@@ -16,6 +17,7 @@ const Auth = () => {
   const [activeTab, setActiveTab] = useState('signin');
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { t } = useTranslation();
 
   useEffect(() => {
     // Check if user is already logged in
@@ -43,8 +45,8 @@ const Auth = () => {
         if (error) throw error;
         
         toast({
-          title: "Check your email",
-          description: "We've sent you a confirmation link to complete your registration.",
+          title: t('auth.checkEmailTitle'),
+          description: t('auth.checkEmailDesc'),
         });
       } else {
         const { error } = await supabase.auth.signInWithPassword({
@@ -55,14 +57,14 @@ const Auth = () => {
         if (error) throw error;
         
         toast({
-          title: "Welcome back!",
-          description: "You've been signed in successfully.",
+          title: t('auth.welcomeBackTitle'),
+          description: t('auth.welcomeBackDesc'),
         });
         navigate('/');
       }
     } catch (error: any) {
       toast({
-        title: "Authentication Error",
+        title: t('auth.errorTitle'),
         description: error.message,
         variant: "destructive",
       });
@@ -84,7 +86,7 @@ const Auth = () => {
       if (error) throw error;
     } catch (error: any) {
       toast({
-        title: "Authentication Error", 
+        title: t('auth.errorTitle'), 
         description: error.message,
         variant: "destructive",
       });
@@ -97,35 +99,35 @@ const Auth = () => {
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <div className="flex items-center justify-center space-x-2 mb-4">
-            <Mic className="w-8 h-8 text-earth-primary" />
-            <h1 className="text-2xl font-bold text-earth-deep">Chi Voice</h1>
+            <h1 className="text-2xl font-bold text-earth-deep">{t('app.title')}</h1>
           </div>
-          <CardTitle>Join the Language Preservation Movement</CardTitle>
+          <CardTitle>{t('auth.title')}</CardTitle>
           <p className="text-sm text-muted-foreground">
-            Help preserve indigenous languages for future generations
+            {t('auth.subtitle')}
+          </p>
           </p>
         </CardHeader>
         <CardContent>
           <Tabs value={activeTab} onValueChange={setActiveTab}>
             <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="signin">Sign In</TabsTrigger>
-              <TabsTrigger value="signup">Sign Up</TabsTrigger>
+              <TabsTrigger value="signin">{t('auth.signin')}</TabsTrigger>
+              <TabsTrigger value="signup">{t('auth.signup')}</TabsTrigger>
             </TabsList>
             
             <TabsContent value="signin" className="space-y-4 mt-6">
               <div className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="signin-email">Email</Label>
+                  <Label htmlFor="signin-email">{t('auth.email')}</Label>
                   <Input
                     id="signin-email"
                     type="email"
-                    placeholder="your.email@example.com"
+                    placeholder={t('auth.emailPlaceholder')}
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="signin-password">Password</Label>
+                  <Label htmlFor="signin-password">{t('auth.password')}</Label>
                   <Input
                     id="signin-password"
                     type="password"
@@ -146,17 +148,17 @@ const Auth = () => {
             <TabsContent value="signup" className="space-y-4 mt-6">
               <div className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="signup-email">Email</Label>
+                  <Label htmlFor="signup-email">{t('auth.email')}</Label>
                   <Input
                     id="signup-email"
                     type="email"
-                    placeholder="your.email@example.com"
+                    placeholder={t('auth.emailPlaceholder')}
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="signup-password">Password</Label>
+                  <Label htmlFor="signup-password">{t('auth.password')}</Label>
                   <Input
                     id="signup-password"
                     type="password"
@@ -181,7 +183,7 @@ const Auth = () => {
             </div>
             <div className="relative flex justify-center text-xs uppercase">
               <span className="bg-background px-2 text-muted-foreground">
-                Or continue with
+                {t('auth.orContinue')}
               </span>
             </div>
           </div>
@@ -193,12 +195,11 @@ const Auth = () => {
             disabled={loading}
           >
             <Chrome className="w-4 h-4 mr-2" />
-            Continue with Google
+            {t('auth.continueWithGoogle')}
           </Button>
 
           <p className="text-xs text-center text-muted-foreground mt-6">
-            By signing up, you agree to help preserve indigenous languages and 
-            contribute to our global cultural heritage database.
+            {t('auth.termsNote')}
           </p>
         </CardContent>
       </Card>

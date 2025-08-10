@@ -98,6 +98,7 @@ const Index = () => {
   // Load live counts and subscribe to realtime updates
   const fetchCounts = async () => {
     try {
+      // TODO: Replace with secure RPC for global stats (awaiting approval)
       const [rec, langs, contrib] = await Promise.all([
         supabase.from('recordings').select('*', { count: 'exact', head: true }),
         supabase.from('languages').select('*', { count: 'exact', head: true }),
@@ -265,7 +266,7 @@ const Index = () => {
                           {language.name}
                         </h3>
                         <p className="text-sm text-muted-foreground">
-                          {language.code} • {isDbLanguage ? 'Global' : ('family' in language ? String(language.family) : 'Unknown')}
+                          {language.code} • {isDbLanguage ? t('home.globalLabel') : ('family' in language ? String(language.family) : t('home.unknown'))}
                         </p>
                         {isDbLanguage && 'total_tasks' in language && language.total_tasks && (
                           <p className="text-xs text-muted-foreground mt-1">
@@ -276,7 +277,7 @@ const Index = () => {
                       <div className="flex items-center space-x-2">
                         {isDbLanguage && 'is_popular' in language && language.is_popular && (
                           <Badge variant="default" className="bg-earth-primary">
-                            Popular
+                            {t('home.popular')}
                           </Badge>
                         )}
                         <Languages className="w-5 h-5 text-muted-foreground group-hover:text-earth-primary transition-colors" />
