@@ -224,7 +224,7 @@ const Chat = () => {
           chatMessages.push({
             id: `${task.id}-recording-${idx + 1}`,
             type: 'user',
-            content: `Recorded: "${task.english_text}"`,
+            content: t('chat.recorded', { text: task.english_text }),
             taskType: task.type as 'word' | 'phrase' | 'sentence',
             difficulty: task.difficulty as 'beginner' | 'intermediate' | 'advanced',
             estimatedTime: task.estimated_time,
@@ -365,7 +365,7 @@ const Chat = () => {
       const optimisticMessage: Message = {
         id: `${taskId}-recording-${nextIndex}`,
         type: 'user',
-        content: `Recorded: "${sysMessage?.content ?? ''}"`,
+        content: t('chat.recorded', { text: sysMessage?.content ?? '' }),
         taskType: (sysMessage?.taskType as Message['taskType']) ?? 'sentence',
         difficulty: (sysMessage?.difficulty as Message['difficulty']) ?? 'beginner',
         estimatedTime: sysMessage?.estimatedTime ?? 2,
@@ -509,7 +509,7 @@ const Chat = () => {
           size="sm"
         >
           <ChevronRight className="w-4 h-4 mr-2" />
-          Next Task
+          {t('chat.buttons.nextTask')}
         </Button>
       </div>
 
@@ -528,11 +528,11 @@ const Chat = () => {
                 <Card className={`max-w-[80%] p-4 ${isUser ? 'bg-earth-primary text-white' : 'bg-card'}`}>
                   <div className="space-y-2">
                     <div className="flex items-center space-x-2">
-                      <Badge variant="outline" className="text-xs">{message.taskType}</Badge>
-                      <Badge variant="outline" className="text-xs">{message.difficulty}</Badge>
+                      <Badge variant="outline" className="text-xs">{t(`task.type.${message.taskType}`)}</Badge>
+                      <Badge variant="outline" className="text-xs">{t(`task.difficulty.${message.difficulty}`)}</Badge>
                       <div className="flex items-center space-x-1 text-xs text-muted-foreground">
                         <Clock className="w-3 h-3" />
-                        <span>{message.estimatedTime}min</span>
+                        <span>{t('task.approxMinutes', { minutes: message.estimatedTime })}</span>
                       </div>
                     </div>
 
@@ -553,7 +553,7 @@ const Chat = () => {
                     {message.type === 'system' && !messages.some(m => m.type === 'user' && ((m.taskId && m.taskId === message.id) || m.id.startsWith(`${message.id}-recording`))) && (
                       <Button size="sm" onClick={() => handleStartRecording(message)} className="bg-earth-primary hover:bg-earth-primary/90">
                         <Mic className="w-4 h-4 mr-2" />
-                        Record
+                        {t('chat.buttons.record')}
                       </Button>
                     )}
                   </div>
@@ -573,7 +573,7 @@ const Chat = () => {
                     className="bg-earth-primary hover:bg-earth-primary/90"
                   >
                     <Mic className="w-4 h-4 mr-2" />
-                    Record Again
+                    {t('chat.buttons.recordAgain')}
                   </Button>
                 </div>
               )}
@@ -592,7 +592,7 @@ const Chat = () => {
             size="lg"
           >
             <Mic className="w-5 h-5 mr-2" />
-            Record Current Task
+            {t('chat.buttons.recordCurrent')}
           </Button>
         ) : (
           <Button
@@ -602,7 +602,7 @@ const Chat = () => {
             size="lg"
           >
             <ChevronRight className="w-5 h-5 mr-2" />
-            {generatingTask ? 'Generating...' : (progress?.can_generate_next ? 'Next Task' : 'Record 2 to unlock')}
+            {generatingTask ? t('chat.buttons.generating') : (progress?.can_generate_next ? t('chat.buttons.nextTask') : t('chat.buttons.recordToUnlock'))}
           </Button>
         )}
       </div>

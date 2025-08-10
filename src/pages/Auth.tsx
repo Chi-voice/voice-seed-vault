@@ -139,7 +139,7 @@ const Auth = () => {
                   className="w-full"
                   disabled={loading}
                 >
-                  {loading ? 'Signing in...' : 'Sign In'}
+                  {loading ? t('auth.signingIn') : t('auth.signin')}
                 </Button>
               </div>
             </TabsContent>
@@ -170,7 +170,7 @@ const Auth = () => {
                   className="w-full"
                   disabled={loading}
                 >
-                  {loading ? 'Creating account...' : 'Create Account'}
+                  {loading ? t('auth.creatingAccount') : t('auth.createAccount')}
                 </Button>
               </div>
             </TabsContent>

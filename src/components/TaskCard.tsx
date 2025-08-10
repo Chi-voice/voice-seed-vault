@@ -56,14 +56,14 @@ export const TaskCard: React.FC<TaskCardProps> = ({ task, onStart, className }) 
             <span className="text-2xl">{typeIcon[task.type]}</span>
             <div>
               <CardTitle className="text-lg font-semibold text-foreground">
-                {task.type.charAt(0).toUpperCase() + task.type.slice(1)} {t('task.translation')}
+                {t(`task.type.${task.type}`)} {t('task.translation')}
               </CardTitle>
               <div className="flex items-center space-x-2 mt-1">
                 <Badge className={typeColors[task.type]} variant="secondary">
-                  {task.type}
+                  {t(`task.type.${task.type}`)}
                 </Badge>
                 <Badge className={difficultyColors[task.difficulty]} variant="secondary">
-                  {task.difficulty}
+                  {t(`task.difficulty.${task.difficulty}`)}
                 </Badge>
               </div>
             </div>
@@ -109,7 +109,7 @@ export const TaskCard: React.FC<TaskCardProps> = ({ task, onStart, className }) 
           )}
           disabled={task.isCompleted}
         >
-          {task.isCompleted ? 'Completed ✓' : 'Start Recording'}
+          {task.isCompleted ? t('task.completed') : t('task.startRecording')}
         </Button>
       </CardContent>
     </Card>

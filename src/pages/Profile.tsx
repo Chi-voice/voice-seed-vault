@@ -181,7 +181,7 @@ const Profile = () => {
                 </p>
                 <div className="flex items-center space-x-2">
                   <Badge className={`${getLevelColor(stats?.currentLevel || 'Beginner')} text-white`}>
-                    {stats?.currentLevel}
+                    {t(`profile.levels.${(stats?.currentLevel || 'Beginner').toLowerCase()}`)}
                   </Badge>
                   <div className="flex items-center space-x-1 text-sm text-muted-foreground">
                     <Trophy className="w-4 h-4" />
@@ -247,7 +247,7 @@ const Profile = () => {
                 size="sm"
                 onClick={() => {
                   navigator.clipboard.writeText(referralLink);
-                  toast({ title: 'Copied referral link' });
+                  toast({ title: t('profile.copied') });
                 }}
               >
                 <Copy className="w-4 h-4 mr-2" /> {t('profile.copy')}

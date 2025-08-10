@@ -37,7 +37,8 @@
     "theme": "主题",
     "light": "浅色",
     "dark": "深色",
-    "system": "系统"
+    "system": "系统",
+    "toggleTheme": "切换主题"
   },
   "common": {
     "today": "今天",
@@ -98,7 +99,16 @@
       "error": "播放错误",
       "cannotPlay": "无法播放此音频。",
       "autoplayPrevented": "自动播放被阻止，请点击重试。"
-    }
+    },
+    "buttons": {
+      "record": "录音",
+      "recordAgain": "再录一次",
+      "recordCurrent": "录制当前任务",
+      "nextTask": "下一个任务",
+      "generating": "正在生成...",
+      "recordToUnlock": "录制 2 条以解锁"
+    },
+    "recorded": "已录制：\"{{text}}\""
   },
   "task": {
     "translation": "翻译",
@@ -106,7 +116,17 @@
     "approxMinutes": "~{{minutes}} 分钟",
     "id": "ID",
     "completed": "已完成 ✓",
-    "startRecording": "开始录音"
+    "startRecording": "开始录音",
+    "type": {
+      "word": "词语",
+      "phrase": "短语",
+      "sentence": "句子"
+    },
+    "difficulty": {
+      "beginner": "初级",
+      "intermediate": "中级",
+      "advanced": "高级"
+    }
   },
   "modal": {
     "title": "录制翻译",
@@ -121,6 +141,7 @@
     },
     "yourRecording": "你的录音：",
     "notesLabel": "附加备注（可选）",
+    "notesPlaceholder": "添加任何与你的翻译相关的上下文、发音备注或文化信息...",
     "cancel": "取消",
     "submit": "提交录音",
     "submitting": "正在提交...",
@@ -160,6 +181,12 @@
     "viewActiveChats": "查看进行中的聊天",
     "signOut": "退出登录",
     "user": "用户",
-    "recently": "最近"
+    "recently": "最近",
+    "levels": {
+      "beginner": "初学者",
+      "intermediate": "中级",
+      "advanced": "高级",
+      "expert": "专家"
+    }
   }
 }

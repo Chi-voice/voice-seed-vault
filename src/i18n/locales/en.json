@@ -37,7 +37,8 @@
     "theme": "Theme",
     "light": "Light",
     "dark": "Dark",
-    "system": "System"
+    "system": "System",
+    "toggleTheme": "Toggle theme"
   },
   "common": {
     "today": "Today",
@@ -98,7 +99,16 @@
       "error": "Playback error",
       "cannotPlay": "Unable to play this audio.",
       "autoplayPrevented": "Autoplay prevented, tap to try again."
-    }
+    },
+    "buttons": {
+      "record": "Record",
+      "recordAgain": "Record Again",
+      "recordCurrent": "Record Current Task",
+      "nextTask": "Next Task",
+      "generating": "Generating...",
+      "recordToUnlock": "Record 2 to unlock"
+    },
+    "recorded": "Recorded: \"{{text}}\""
   },
   "task": {
     "translation": "Translation",
@@ -106,7 +116,17 @@
     "approxMinutes": "~{{minutes}} min",
     "id": "ID",
     "completed": "Completed ✓",
-    "startRecording": "Start Recording"
+    "startRecording": "Start Recording",
+    "type": {
+      "word": "Word",
+      "phrase": "Phrase",
+      "sentence": "Sentence"
+    },
+    "difficulty": {
+      "beginner": "Beginner",
+      "intermediate": "Intermediate",
+      "advanced": "Advanced"
+    }
   },
   "modal": {
     "title": "Record Translation",
@@ -121,6 +141,7 @@
     },
     "yourRecording": "Your Recording:",
     "notesLabel": "Additional Notes (Optional)",
+    "notesPlaceholder": "Add any context, pronunciation notes, or cultural information about your translation...",
     "cancel": "Cancel",
     "submit": "Submit Recording",
     "submitting": "Submitting...",
@@ -160,6 +181,12 @@
     "viewActiveChats": "View Active Chats",
     "signOut": "Sign Out",
     "user": "User",
-    "recently": "Recently"
+    "recently": "Recently",
+    "levels": {
+      "beginner": "Beginner",
+      "intermediate": "Intermediate",
+      "advanced": "Advanced",
+      "expert": "Expert"
+    }
   }
 }

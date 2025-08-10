@@ -62,7 +62,7 @@ export const RecordingModal: React.FC<RecordingModalProps> = ({
       setNotes('');
     } catch (error) {
       toast({
-        title: "Submission failed",
+        title: t('modal.submitErrorTitle'),
         description: t('modal.submitErrorDesc'),
         variant: "destructive",
       });
@@ -106,10 +106,10 @@ export const RecordingModal: React.FC<RecordingModalProps> = ({
           <div className="bg-earth-warm p-4 rounded-lg space-y-3">
             <div className="flex items-center space-x-2">
               <Badge className="bg-earth-primary text-white">
-                {task.type}
+                {t(`task.type.${task.type}`)}
               </Badge>
               <Badge variant="outline" className="text-earth-deep">
-                {task.difficulty}
+                {t(`task.difficulty.${task.difficulty}`)}
               </Badge>
             </div>
             
@@ -158,7 +158,7 @@ export const RecordingModal: React.FC<RecordingModalProps> = ({
               {t('modal.notesLabel')}
             </label>
             <Textarea
-              placeholder="Add any context, pronunciation notes, or cultural information about your translation..."
+              placeholder={t('modal.notesPlaceholder')}
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               className="min-h-[80px]"
