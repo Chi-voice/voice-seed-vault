@@ -182,9 +182,10 @@ serve(async (req) => {
       });
     }
 
-    const taskTypes = ['word', 'phrase', 'sentence'];
+    // Bias towards phrases and sentences for everyday usage
+    const taskTypesPool = ['phrase','sentence','sentence','phrase','word'];
     const difficulties = ['beginner', 'intermediate', 'advanced'];
-    const randomType = taskTypes[Math.floor(Math.random() * taskTypes.length)];
+    const randomType = taskTypesPool[Math.floor(Math.random() * taskTypesPool.length)];
     const randomDifficulty = difficulties[Math.floor(Math.random() * difficulties.length)];
 
     // Fetch recent tasks to avoid repetition
@@ -225,13 +226,62 @@ serve(async (req) => {
       return false;
     };
 
+    // Quality heuristics and curated fallback generation
+    const NATURAL_BAD_PATTERNS: RegExp[] = [
+      /\bvisit(ing)? the food\b/i,
+      /\brepair(ing)? the food\b/i,
+      /\bfix(ing)? the food\b/i,
+      /\bteach(ing)? the food\b/i,
+      /\blearn(ing)? the food\b/i,
+    ];
+    const isNatural = (text: string, type: 'word' | 'phrase' | 'sentence') => {
+      const t = (text || '').trim();
+      if (!t) return false;
+      if (type === 'word') return !/\s/.test(t) && /^[A-Za-z][A-Za-z\-']{1,30}$/.test(t);
+      if (type === 'phrase') {
+        if (t.split(/\s+/).length < 2 || t.split(/\s+/).length > 8) return false;
+        if (/[\{\}\[\]]/.test(t)) return false;
+        for (const r of NATURAL_BAD_PATTERNS) if (r.test(t)) return false;
+        return true;
+      }
+      // sentence
+      if (t.split(/\s+/).length < 4 || t.length > 120) return false;
+      if (!/[.?!]$/.test(t)) return false;
+      if (!/\b(I|We|You|He|She|They|My|Your|Our)\b/i.test(t)) return false;
+      for (const r of NATURAL_BAD_PATTERNS) if (r.test(t)) return false;
+      return true;
+    };
+
     const makeFallbackCandidate = (type: 'word' | 'phrase' | 'sentence') => {
-      const words = ['water','food','family','friend','rain','sun','moon','tree','house','fire','river','mountain','child','mother','father','road','bird','fish','earth','sky','wind','song','dance','story','market','teacher','school','village','forest','medicine'];
-      const items = ['water','medicine','food','salt','cloth','oil','firewood','fish','rice','maize'];
-      const places = ['river','market','school','farm','village','forest','house','mountain'];
-      const times = ['today','tomorrow','this morning','this evening','next week'];
-      const verbs = ['fetch','cook','buy','sell','visit','teach','learn','carry','repair','plant'];
-      const objects = ['water','food','tools','clothes','basket','boat','house','fence'];
+      const words = [
+        'water','family','friend','market','school','village','river','house','doctor','music','morning','evening','bread','money','phone','bus'
+      ];
+      const phrases = [
+        'How are you?',
+        'Please wait a moment.',
+        'Can you help me?',
+        "I don't understand.",
+        'What time is it?',
+        'See you tomorrow.',
+        'Where is the market?',
+        'I would like some water.',
+        "I'm on my way.",
+        'I need a doctor.',
+        'Where can I buy food?',
+        'Thank you very much.'
+      ];
+      const places = ['market','school','river','farm','village','clinic','bus station','store','house'];
+      const times = ['this morning','this afternoon','this evening','tomorrow','next week'];
+      const sentences = [
+        (pl: string, tm: string) => `I am going to the ${pl} ${tm}.`,
+        (pl: string) => `My house is near the ${pl}.`,
+        (pl: string) => `We will meet at the ${pl} tomorrow.`,
+        (pl: string) => `The road to the ${pl} is very long.`,
+        (pl: string) => `She is working at the ${pl} today.`,
+        (pl: string) => `He is walking to the ${pl} now.`,
+        (pl: string) => `They are waiting at the ${pl}.`,
+      ];
+
       let candidate = { text: '', description: '', estimated: 2 } as { text: string; description: string; estimated: number };
 
       if (type === 'word') {
@@ -241,37 +291,17 @@ serve(async (req) => {
         candidate.description = `Translate the word "${candidate.text}" into ${language.name}.`;
         candidate.estimated = 1;
       } else if (type === 'phrase') {
-        const phraseTemplates = [
-          (it: string) => `I need ${it}`,
-          (it: string) => `Where can I buy ${it}?`,
-          (pl: string) => `Let's go to the ${pl}`,
-          (it: string) => `Do you have ${it}?`,
-          (pl: string) => `I'm at the ${pl}`
-        ];
-        const it = items[Math.floor(Math.random() * items.length)];
-        const pl = places[Math.floor(Math.random() * places.length)];
-        const templatesAny = phraseTemplates as ((x: string) => string)[];
-        const text = Math.random() < 0.5 ? templatesAny[0](it) : (Math.random() < 0.5 ? templatesAny[1](it) : (Math.random() < 0.5 ? templatesAny[2](pl) : (Math.random() < 0.5 ? templatesAny[3](it) : templatesAny[4](pl))));
-        candidate.text = text;
+        const pool = phrases.filter(p => !isTooSimilar(p));
+        candidate.text = (pool.length ? pool : phrases)[Math.floor(Math.random() * (pool.length ? pool.length : phrases.length))];
         candidate.description = `Translate this everyday expression into ${language.name}.`;
         candidate.estimated = 2;
       } else {
-        const sentenceTemplates = [
-          (pl: string, tm: string) => `I am going to the ${pl} ${tm}.`,
-          (vb: string, ob: string) => `We will ${vb} the ${ob} tomorrow.`,
-          (pl: string) => `My house is near the ${pl}.`,
-          (vb: string, ob: string) => `She can ${vb} the ${ob}.`,
-          (pl: string) => `The road to the ${pl} is long.`
-        ];
-        const tm = times[Math.floor(Math.random() * times.length)];
         const pl = places[Math.floor(Math.random() * places.length)];
-        const vb = verbs[Math.floor(Math.random() * verbs.length)];
-        const ob = objects[Math.floor(Math.random() * objects.length)];
-        const idx = Math.floor(Math.random() * sentenceTemplates.length);
-        const text = idx === 0 ? sentenceTemplates[0](pl, tm) : idx === 1 ? sentenceTemplates[1](vb, ob) : idx === 2 ? sentenceTemplates[2](pl) : idx === 3 ? sentenceTemplates[3](vb, ob) : sentenceTemplates[4](pl);
+        const tm = times[Math.floor(Math.random() * times.length)];
+        const text = sentences[Math.floor(Math.random() * sentences.length)](pl, tm as any);
         candidate.text = text;
         candidate.description = `Translate this practical sentence into ${language.name}.`;
-        candidate.estimated = 2;
+        candidate.estimated = 3;
       }
       return candidate;
     };
@@ -279,20 +309,23 @@ serve(async (req) => {
     const pickUniqueFallback = (type: 'word' | 'phrase' | 'sentence', maxTries = 12) => {
       for (let i = 0; i < maxTries; i++) {
         const c = makeFallbackCandidate(type);
-        if (!isTooSimilar(c.text)) return c;
+        if (!isTooSimilar(c.text) && isNatural(c.text, type)) return c;
       }
-      return makeFallbackCandidate('word');
+      const final = makeFallbackCandidate('phrase');
+      return isNatural(final.text, 'phrase') ? final : { text: 'Thank you very much.', description: `Translate this everyday expression into ${language.name}.`, estimated: 2 };
     };
 
-    const prompt = `Generate a ${randomDifficulty} level English ${randomType} for indigenous language translation practice for ${language.name}.
+    const prompt = `Generate a ${randomDifficulty} level English ${randomType} for everyday conversation practice in ${language.name}.
     
     Requirements:
-    - It must be NEW for this language (not previously used).
-    - Keep it culturally appropriate and useful for language preservation.
-    - For words, use common vocabulary. For phrases, use everyday expressions. For sentences, use practical statements.
-    - Return ONLY a JSON object with fields: english_text, description, estimated_time (1-5).
+    - It must sound natural and be commonly used in daily life (avoid odd verb-object pairs like "visit the food").
+    - Prefer neutral, culturally respectful content for general contexts.
+    - Keep it short and clear. Words: one token; Phrases: 2–8 words; Sentences: 4–14 words.
+    - Output MUST be valid JSON only: {"english_text": string, "description": string, "estimated_time": number}
+    - Good examples:\n      - Word: "water"\n      - Phrase: "Where is the market?"\n      - Sentence: "We will visit the market tomorrow."
+    - Bad examples (do NOT produce):\n      - "We will visit the food tomorrow."\n      - "Repair the rice now."
     ${avoidance}${avoidanceWords}
-    Ensure english_text is not in the provided avoid lists and is concise.`
+    Return only the JSON object, without any extra text.`
 
     console.log('Generating task with OpenAI for language:', language.name);
 
@@ -311,7 +344,7 @@ serve(async (req) => {
           },
           { role: 'user', content: prompt }
         ],
-        temperature: 0.8,
+        temperature: 0.4,
         max_tokens: 200,
       }),
     });
@@ -416,11 +449,23 @@ serve(async (req) => {
       });
     }
 
-    // Ensure uniqueness; if AI output duplicates or missing, use diversified fallback
+    // Ensure uniqueness and naturalness; if AI output is missing/duplicate/unnatural, use curated fallback
     let createdByAi = true;
     let aiEnglishText = (taskData?.english_text ?? '').trim();
-    if (!aiEnglishText || usedTexts.has(aiEnglishText.toLowerCase())) {
-      console.log('AI output missing/duplicate. Switching to diversified fallback.');
+    const aiDesc = (taskData?.description ?? '').trim();
+    const aiEst = Number(taskData?.estimated_time ?? 2);
+
+    const invalidAi =
+      !aiEnglishText ||
+      usedTexts.has(aiEnglishText.toLowerCase()) ||
+      !isNatural(aiEnglishText, randomType as 'word' | 'phrase' | 'sentence');
+
+    if (invalidAi) {
+      console.log('AI output rejected. Switching to curated fallback.', {
+        missing: !aiEnglishText,
+        duplicate: aiEnglishText ? usedTexts.has(aiEnglishText.toLowerCase()) : false,
+        unnatural: aiEnglishText ? !isNatural(aiEnglishText, randomType as 'word' | 'phrase' | 'sentence') : false,
+      });
       createdByAi = false;
       const candidate = pickUniqueFallback(randomType as 'word' | 'phrase' | 'sentence');
       taskData = {
@@ -428,6 +473,10 @@ serve(async (req) => {
         description: candidate.description,
         estimated_time: candidate.estimated
       };
+    } else {
+      // Normalize estimated_time and description
+      taskData.estimated_time = Math.min(5, Math.max(1, isFinite(aiEst) ? aiEst : 2));
+      taskData.description = aiDesc || `Translate this into ${language.name}.`;
     }
 
     aiEnglishText = (taskData?.english_text ?? '').trim();
