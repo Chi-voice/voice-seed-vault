@@ -5,6 +5,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Mic, MicOff, Play, Pause, RotateCcw } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useTranslation } from 'react-i18next';
+import { useToast } from '@/components/ui/use-toast';
 
 interface AudioRecorderProps {
   onRecordingComplete: (audioBlob: Blob) => void;
@@ -18,6 +19,7 @@ export const AudioRecorder: React.FC<AudioRecorderProps> = ({
   className
 }) => {
   const { t } = useTranslation();
+  const { toast } = useToast();
   const [isRecording, setIsRecording] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const [recordingTime, setRecordingTime] = useState(0);
@@ -27,9 +29,13 @@ export const AudioRecorder: React.FC<AudioRecorderProps> = ({
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioPlayerRef = useRef<HTMLAudioElement | null>(null);
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const intervalRef = useRef<number | null>(null);
+  const waveformIntervalRef = useRef<number | null>(null);
+  const autoStopTimeoutRef = useRef<number | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
   const dataArrayRef = useRef<Uint8Array | null>(null);
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const isRecordingRef = useRef(false);
 
   const startRecording = async () => {
     try {
@@ -42,7 +48,9 @@ export const AudioRecorder: React.FC<AudioRecorderProps> = ({
       });
       
       // Set up audio analysis for waveform
-      const audioContext = new AudioContext();
+      const AudioCtx = (window as any).AudioContext || (window as any).webkitAudioContext;
+      const audioContext: AudioContext = new AudioCtx();
+      audioContextRef.current = audioContext;
       const analyser = audioContext.createAnalyser();
       const source = audioContext.createMediaStreamSource(stream);
       source.connect(analyser);
@@ -54,42 +62,94 @@ export const AudioRecorder: React.FC<AudioRecorderProps> = ({
       analyserRef.current = analyser;
       dataArrayRef.current = dataArray;
 
-      const mediaRecorder = new MediaRecorder(stream);
+      // Choose best supported MIME type for this browser
+      const preferredTypes = [
+        'audio/webm;codecs=opus',
+        'audio/webm',
+        'audio/mp4;codecs=mp4a.40.2',
+        'audio/mp4',
+        'audio/ogg;codecs=opus'
+      ];
+      const selectedType = preferredTypes.find((t) => {
+        try {
+          return (window as any).MediaRecorder?.isTypeSupported?.(t);
+        } catch {
+          return false;
+        }
+      }) || '';
+
+      const mediaRecorder = selectedType
+        ? new MediaRecorder(stream, { mimeType: selectedType })
+        : new MediaRecorder(stream);
       mediaRecorderRef.current = mediaRecorder;
       
       const chunks: Blob[] = [];
       
       mediaRecorder.ondataavailable = (event) => {
-        if (event.data.size > 0) {
+        if (event.data && event.data.size > 0) {
           chunks.push(event.data);
         }
       };
       
       mediaRecorder.onstop = () => {
-        const blob = new Blob(chunks, { type: 'audio/wav' });
-        setAudioBlob(blob);
-        setAudioUrl(URL.createObjectURL(blob));
-        onRecordingComplete(blob);
-        stream.getTracks().forEach(track => track.stop());
+        try {
+          // Stop all tracks
+          stream.getTracks().forEach(track => track.stop());
+
+          // Determine final blob type
+          const finalType = chunks[0]?.type || mediaRecorder.mimeType || selectedType || 'audio/webm';
+          
+          if (!chunks.length) {
+            toast({
+              title: t('recorder.noAudioCapturedTitle') ?? 'No audio captured',
+              description: t('recorder.noAudioCapturedDesc') ?? 'Please try recording again.',
+              variant: 'destructive',
+            });
+            return;
+          }
+
+          const totalSize = chunks.reduce((acc, b) => acc + b.size, 0);
+          if (totalSize < 1024) {
+            toast({
+              title: t('recorder.tooShortTitle') ?? 'Recording too short',
+              description: t('recorder.tooShortDesc') ?? 'Please hold the mic and try again.',
+              variant: 'destructive',
+            });
+            return;
+          }
+          
+          const blob = new Blob(chunks, { type: finalType });
+          setAudioBlob(blob);
+          setAudioUrl(URL.createObjectURL(blob));
+          onRecordingComplete(blob);
+        } finally {
+          // Cleanup analysis resources
+          try { audioContextRef.current?.close(); } catch {}
+          analyserRef.current = null;
+          dataArrayRef.current = null;
+          isRecordingRef.current = false;
+        }
       };
       
       mediaRecorder.start();
       setIsRecording(true);
+      isRecordingRef.current = true;
       setRecordingTime(0);
+      setWaveformData([]);
       
       // Update waveform during recording
       const updateWaveform = () => {
         if (analyserRef.current && dataArrayRef.current) {
           analyserRef.current.getByteFrequencyData(dataArrayRef.current);
-          const average = dataArrayRef.current.reduce((a, b) => a + b) / dataArrayRef.current.length;
+          const average = dataArrayRef.current.reduce((a, b) => a + b, 0) / dataArrayRef.current.length;
           setWaveformData(prev => [...prev.slice(-50), average / 255]);
         }
       };
       
-      const waveformInterval = setInterval(updateWaveform, 100);
+      waveformIntervalRef.current = window.setInterval(updateWaveform, 100);
       
       // Timer
-      intervalRef.current = setInterval(() => {
+      intervalRef.current = window.setInterval(() => {
         setRecordingTime(prev => {
           if (prev >= maxDuration) {
             stopRecording();
@@ -100,25 +160,41 @@ export const AudioRecorder: React.FC<AudioRecorderProps> = ({
       }, 1000);
       
       // Auto-stop at max duration
-      setTimeout(() => {
-        if (isRecording) {
+      autoStopTimeoutRef.current = window.setTimeout(() => {
+        if (isRecordingRef.current) {
           stopRecording();
         }
-        clearInterval(waveformInterval);
       }, maxDuration * 1000);
       
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error accessing microphone:', error);
+      toast({
+        title: t('recorder.permissionDeniedTitle') ?? 'Microphone error',
+        description: (error?.message || (t('recorder.permissionDeniedDesc') as any)) ?? 'Please allow microphone access and try again.',
+        variant: 'destructive',
+      });
+      isRecordingRef.current = false;
     }
   };
 
   const stopRecording = () => {
-    if (mediaRecorderRef.current && isRecording) {
-      mediaRecorderRef.current.stop();
-      setIsRecording(false);
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-      }
+    const mr = mediaRecorderRef.current;
+    if (mr && mr.state !== 'inactive') {
+      mr.stop();
+    }
+    setIsRecording(false);
+    isRecordingRef.current = false;
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
+    if (waveformIntervalRef.current) {
+      clearInterval(waveformIntervalRef.current);
+      waveformIntervalRef.current = null;
+    }
+    if (autoStopTimeoutRef.current) {
+      clearTimeout(autoStopTimeoutRef.current);
+      autoStopTimeoutRef.current = null;
     }
   };
 
@@ -155,6 +231,10 @@ export const AudioRecorder: React.FC<AudioRecorderProps> = ({
       if (audioPlayerRef.current) {
         audioPlayerRef.current.pause();
       }
+      if (intervalRef.current) clearInterval(intervalRef.current);
+      if (waveformIntervalRef.current) clearInterval(waveformIntervalRef.current);
+      if (autoStopTimeoutRef.current) clearTimeout(autoStopTimeoutRef.current);
+      try { audioContextRef.current?.close(); } catch {}
     };
   }, [audioUrl]);
 

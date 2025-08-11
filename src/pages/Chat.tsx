@@ -326,11 +326,16 @@ const Chat = () => {
           });
         });
 
-      // 1) Upload the blob to Storage with a user-scoped path
-      const filePath = `${user.id}/${taskId}/${Date.now()}.webm`;
+      // 1) Determine content type and extension, guard against empty blob
+      const mime = audioBlob.type || 'audio/webm';
+      const ext = mime.includes('mp4') ? 'm4a' : mime.includes('webm') ? 'webm' : mime.includes('ogg') ? 'ogg' : mime.includes('wav') ? 'wav' : 'webm';
+      if (!audioBlob || audioBlob.size < 1024) {
+        throw new Error(t('chat.toasts.emptyRecording') ?? 'The recording seems empty. Please try again.');
+      }
+      const filePath = `${user.id}/${taskId}/${Date.now()}.${ext}`;
       const { error: uploadError } = await supabase.storage
         .from('recordings')
-        .upload(filePath, audioBlob, { contentType: 'audio/webm' });
+        .upload(filePath, audioBlob, { contentType: mime });
       if (uploadError) throw uploadError;
 
       // 2) Get a public URL
