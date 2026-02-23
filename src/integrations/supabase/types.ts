@@ -84,6 +84,8 @@ export type Database = {
           duration: number | null
           id: string
           notes: string | null
+          sia_archived_at: string | null
+          sia_cid: string | null
           task_id: string
           user_id: string
         }
@@ -93,6 +95,8 @@ export type Database = {
           duration?: number | null
           id?: string
           notes?: string | null
+          sia_archived_at?: string | null
+          sia_cid?: string | null
           task_id: string
           user_id: string
         }
@@ -102,6 +106,8 @@ export type Database = {
           duration?: number | null
           id?: string
           notes?: string | null
+          sia_archived_at?: string | null
+          sia_cid?: string | null
           task_id?: string
           user_id?: string
         }
