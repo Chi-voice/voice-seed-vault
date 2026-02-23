@@ -33,7 +33,7 @@ export const AudioRecorder: React.FC<AudioRecorderProps> = ({
   const waveformIntervalRef = useRef<number | null>(null);
   const autoStopTimeoutRef = useRef<number | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
-  const dataArrayRef = useRef<Uint8Array | null>(null);
+  const dataArrayRef = useRef<Uint8Array<ArrayBuffer> | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const isRecordingRef = useRef(false);
 
