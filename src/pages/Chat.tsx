@@ -346,7 +346,7 @@ const Chat = () => {
       const duration = await getAudioDuration(audioBlob);
 
       // 4) Insert the new recording with the real URL and duration
-      const { error: insertError } = await supabase
+      const { data: insertedRecording, error: insertError } = await supabase
         .from('recordings')
         .insert({
           user_id: user.id,
@@ -354,8 +354,22 @@ const Chat = () => {
           audio_url: audioUrl,
           notes: notes,
           duration,
-        });
+        })
+        .select('id')
+        .single();
       if (insertError) throw insertError;
+
+      // 5) Archive to Sia (fire-and-forget, don't block the UI)
+      supabase.functions.invoke('archive-to-sia', {
+        body: {
+          recording_id: insertedRecording.id,
+          audio_url: audioUrl,
+          file_path: filePath,
+        },
+      }).then(({ error }) => {
+        if (error) console.warn('Sia archival failed (will retry later):', error);
+        else console.log('Recording archived to Sia successfully');
+      });
 
       // 5) Optimistically add the new recording to the chat UI
       const sysMessage = messages.find((m) => m.type === 'system' && m.id === taskId);
