@@ -59,7 +59,11 @@ serve(async (req) => {
 
     // 2) Upload to S5 portal via its HTTP API (TUS or multipart)
     // The S5 portal exposes a standard upload endpoint
-    const portalUrl = S5_PORTAL_URL.replace(/\/$/, "");
+    // Ensure portal URL has a scheme
+    let portalUrl = S5_PORTAL_URL.replace(/\/$/, "");
+    if (!/^https?:\/\//i.test(portalUrl)) {
+      portalUrl = `https://${portalUrl}`;
+    }
     const uploadUrl = `${portalUrl}/s5/upload`;
 
     const formData = new FormData();
