@@ -93,7 +93,7 @@ serve(async (req) => {
           .eq('language_id', languageDbId)
           .single();
 
-        if (!progress || !progress.can_generate_next) {
+        if (progress && !progress.can_generate_next) {
           return new Response(JSON.stringify({ 
             error: 'You need to complete 2 recordings before generating next task',
             recordings_needed: 2 - (progress?.recordings_count || 0)
